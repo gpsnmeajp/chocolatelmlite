@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+	<meta name="theme-color" content="#3d2820">
+	<title>システム設定 | Chocolate LM Lite</title>
+	<link rel="manifest" href="manifest.json">
+	<link rel="stylesheet" href="css/common.css">
+	<link rel="stylesheet" href="css/system.css">
+</head>
+<body>
+	<div class="app-container">
+		<div class="main-content">
+			<section class="settings-card" aria-labelledby="settingsTitle">
+				<h1 class="settings-title" id="settingsTitle">システム設定</h1>
+				<p class="settings-lead">一部の設定は再起動まで反映されません。</p>
+
+				<div id="loadingState" class="loading-placeholder">設定を読み込んでいます...</div>
+
+				<form id="settingsForm" hidden>
+					<div class="form-actions">
+						<a href="personas.htm" class="btn-secondary back-button" id="backButton">戻る</a>
+						<div class="form-actions-right">
+							<span id="saveStatus" role="status" aria-live="polite"></span>
+							<button type="submit" class="btn-primary" id="saveButton">保存</button>
+						</div>
+					</div>
+
+					<div id="primarySettings" class="settings-section"></div>
+
+					<details id="advancedSettingsContainer" class="advanced-settings">
+						<summary id="advancedSettingsSummary">応用的な設定</summary>
+						<div class="advanced-settings-content">
+							<div id="advancedSettings" class="settings-section"></div>
+						</div>
+					</details>
+				</form>
+			</section>
+		</div>
+	</div>
+
+	<script src="js/common.js"></script>
+	<script src="js/system.js"></script>
+</body>
+</html>

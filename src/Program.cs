@@ -1,0 +1,172 @@
+﻿using System;
+using System.Diagnostics;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
+
+/*
+dotnet publish -c Release --self-contained true -r win-x64
+dotnet publish -c Release --self-contained true -r linux-x64
+dotnet publish -c Release --self-contained true -r osx-x64
+*/
+
+namespace CllDotnet
+{
+    class Program
+    {
+        static bool exit = false;
+        public static CancellationTokenSource cts = new CancellationTokenSource();
+        static void Main()
+        {
+            MyLog.LogWrite("Chocolate LM Lite 🍫 サーバーコンソール");
+            MyLog.LogWrite("準備中...");
+
+            while (!exit)
+            {
+                Start();
+                GC.Collect();
+                Thread.Sleep(3000);
+            }
+        }
+
+        public static void Stop()
+        {
+            MyLog.LogWrite("サーバーを再起動します...");
+            cts.Cancel();
+        }
+
+        static void Start()
+        {
+            try
+            {
+                cts = new CancellationTokenSource();
+
+                // カレントフォルダ
+                MyLog.LogWrite($"カレントフォルダ: {Directory.GetCurrentDirectory()}");
+
+                // カレントフォルダ直下にstaticフォルダが有るかチェック。なければ例外。
+                string staticDir = Path.Combine(Directory.GetCurrentDirectory(), "static");
+                if (!Directory.Exists(staticDir))
+                {
+                    MyLog.LogWrite($"staticフォルダが存在しません: {staticDir}");
+                    return;
+                }
+
+                // カレントフォルダ直下にdataフォルダが有るかチェック。なければ作成。
+                string dataDir = Path.Combine(Directory.GetCurrentDirectory(), "data"); ;
+                if (!Directory.Exists(dataDir))
+                {
+                    MyLog.LogWrite($"dataフォルダが存在しないため作成します: {dataDir}");
+                    Directory.CreateDirectory(dataDir);
+                }
+
+                // カレントフォルダ直下にlogsフォルダが有るかチェック。なければ作成。
+                string logsDir = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+                if (!Directory.Exists(logsDir))
+                {
+                    MyLog.LogWrite($"logsフォルダが存在しないため作成します: {logsDir}");
+                    Directory.CreateDirectory(logsDir);
+                }
+
+                MyLog.LogWrite("フォルダチェック完了");
+
+                // ファイルマネージャーの初期化
+                MyLog.LogWrite("ファイルマネージャーの初期化");
+                FileManager fileManager = new FileManager();
+
+                // コンソールモニターの起動
+                MyLog.LogWrite("コンソールモニターの起動");
+                ConsoleMonitor consoleMonitor = new ConsoleMonitor(fileManager);
+                consoleMonitor.Start(fileManager.generalSettings.EnableConsoleMonitor, cts.Token);
+
+                // 定期バックアップのスケジューリング
+                MyLog.LogWrite("定期バックアップのスケジューリング");
+                Backup.ScheduleDailyBackup(consoleMonitor, cts.Token);
+
+                // 定期アップデートチェックのスケジューリング
+                if (fileManager.generalSettings.EnableAutoUpdateCheck)
+                {
+                    MyLog.LogWrite("定期アップデートチェックのスケジューリング");
+                    UpdateChecker.ScheduleRegularUpdates(consoleMonitor, cts.Token);
+                }
+                else
+                {
+                    MyLog.LogWrite("自動アップデートチェックは無効化されています");
+                }
+
+                // 画像生成器の初期化
+                MyLog.LogWrite("画像生成器の初期化");
+                ImageGenerater imageGenerater = new ImageGenerater(fileManager);
+
+                // ツールの初期化
+                MyLog.LogWrite("ツールの初期化");
+                Tools tools = new Tools(imageGenerater, fileManager, consoleMonitor);
+
+                // LLMの初期化
+                MyLog.LogWrite("LLMの初期化");
+                LLM llm = new LLM(fileManager, consoleMonitor, tools);
+
+                // ペルソナの初期化
+                MyLog.LogWrite("ペルソナの初期化");
+                Persona persona = new Persona(fileManager, consoleMonitor, llm);
+
+                // 1分おきの定期処理の開始
+                MyLog.LogWrite("定期処理の開始");
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        while (!cts.Token.IsCancellationRequested)
+                        {
+                            await persona.PerformPeriodicTasks(cancellationToken: cts.Token);
+                            for (int i = 0; i < 60; i++)
+                            {
+                                if (cts.Token.IsCancellationRequested) break;
+                                await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // キャンセル時の例外は無視
+                    }
+                });
+
+
+                // Webサーバーの起動
+                MyLog.LogWrite("Webサーバーの起動");
+                WebServer server = new WebServer(consoleMonitor, persona);
+                Broadcaster.Initialize(server.Broadcast);
+
+                // Windowsならブラウザを起動する
+                if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = $"http://localhost:{fileManager.generalSettings.HttpPort}/",
+                        UseShellExecute = true
+                    });
+                }
+
+                Console.CancelKeyPress += (sender, e) =>
+                {
+                    if (exit) return;
+                    MyLog.LogWrite("サーバーを停止しています...");
+                    exit = true;
+                    cts.Cancel();
+                    server.Stop();
+                };
+
+                MyLog.LogWrite($"開始: port {fileManager.generalSettings.HttpPort}");
+                server.RunSync(fileManager.generalSettings.HttpPort, fileManager.generalSettings.LocalOnly, fileManager.generalSettings.SystemSettingsLocalOnly, cts.Token);
+                MyLog.LogWrite($"終了");
+            }
+            catch (Exception ex)
+            {
+                MyLog.LogWrite("トップレベル例外! 致命的なエラーが発生しました: " + ex.Message);
+                MyLog.LogWrite(ex.StackTrace ?? "");
+            }
+        }
+    }
+}

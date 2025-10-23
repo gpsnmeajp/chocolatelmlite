@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Chocolate LM Lite">
+  <meta name="theme-color" content="#3d2820">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+  <link rel="manifest" href="manifest.json">
+  <title>ペルソナ管理 - Chocolate LM Lite</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/personas.css">
+</head>
+<body>
+  <div class="app-container">
+    <div class="header">
+      <button class="back-btn" onclick="goToWelcome()" title="ようこそ画面に戻る">
+        <svg viewBox="0 0 24 24">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <div class="header-content">
+        <div class="logo">Chocolate LM Lite</div>
+      </div>
+      <div class="header-icons">
+        <button class="icon-btn" onclick="location.href='system.htm'" title="システム全体設定" aria-label="システム全体設定">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+        <button id="restartButton" class="icon-btn restart-btn" onclick="handleRestartClick()" title="再起動" aria-label="再起動">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+            <line x1="12" y1="2" x2="12" y2="12"></line>
+            </svg>
+        </button>
+      </div>
+    </div>
+    
+    <div class="main-content">
+      <h2 style="margin-bottom: 16px;">ペルソナ管理</h2>
+      <p class="hint">システム全体設定および再起動は、画面右上のボタンを押してください</p>
+      
+      <div class="actions-bar">
+        <button class="btn-primary" onclick="showNewModal()">新規作成</button>
+        <button class="btn-secondary" onclick="showDuplicateModal()">複製</button>
+        <button class="btn-danger" onclick="showDeleteModal()">削除</button>
+      </div>
+      
+      <div class="persona-table">
+        <div class="persona-row header">
+          <div>表示名</div>
+          <div>ペルソナID</div>
+          <div style="text-align: right;">最終更新日</div>
+        </div>
+        <div id="personaLoading" class="loading-overlay" aria-hidden="true">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="loading-text" role="status" aria-live="polite">ペルソナをアクティブ化しています...</div>
+        </div>
+        <div id="personaRows"></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 新規作成モーダル -->
+  <div id="newModal" class="modal">
+    <div class="modal-content">
+      <h3 class="modal-title">新規ペルソナ作成</h3>
+      <div class="form-group">
+        <label>表示名</label>
+        <input type="text" id="newName" placeholder="新しいペルソナの名前">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('newModal')">キャンセル</button>
+        <button class="btn-primary" onclick="createPersona()">作成</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 複製モーダル -->
+  <div id="duplicateModal" class="modal">
+    <div class="modal-content">
+      <h3 class="modal-title">ペルソナ複製</h3>
+      <div class="form-group">
+        <label>複製元ペルソナ</label>
+        <select id="duplicateSource" class="form-select">
+          <option value="">選択してください</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>新しい表示名</label>
+        <input type="text" id="duplicateName" placeholder="複製したペルソナの名前">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('duplicateModal')">キャンセル</button>
+        <button class="btn-primary" onclick="duplicatePersona()">複製</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 削除モーダル -->
+  <div id="deleteModal" class="modal">
+    <div class="modal-content">
+      <h3 class="modal-title">ペルソナ削除</h3>
+      <div class="form-group">
+        <label>削除するペルソナ</label>
+        <select id="deleteId" class="form-select">
+          <option value="">選択してください</option>
+        </select>
+      </div>
+      <p style="color: var(--danger-color); margin: 12px 0;">
+        この操作は取り消せません。本当に削除しますか?
+      </p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('deleteModal')">キャンセル</button>
+        <button class="btn-danger" onclick="deletePersona()">削除</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="js/common.js" defer></script>
+  <script src="js/personas.js" defer></script>
+</body>
+</html>

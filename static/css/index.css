@@ -1,0 +1,86 @@
+/* ようこそ画面専用スタイル */
+.app-container {
+  max-width: none;
+  width: 100vw;
+}
+
+.welcome-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 10px 10px;
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.welcome-logo {
+  font-size: 36px;
+  margin-bottom: 16px;
+}
+
+.welcome-title {
+  font-size: 28px;
+  font-weight: bold;
+  background: linear-gradient(135deg, var(--logo-gradient-start), var(--logo-gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-section {
+  max-width: 600px;
+  margin-top: 16px;
+  text-align: left;
+}
+
+.welcome-section h2 {
+  font-size: 18px;
+  color: var(--accent-color);
+}
+
+.welcome-section p,
+.welcome-section ul {
+  line-height: 1.6;
+}
+
+.welcome-section ul {
+  padding-left: 24px;
+}
+
+.welcome-section li {
+  margin-bottom: 8px;
+}
+
+.caution-box {
+  font-size: clamp(0.3rem, calc(1.25vw + 0.3rem), 1.0rem);
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--danger-color);
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.caution-box h3 {
+  color: var(--danger-color);
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.caution-box li {
+  text-align: left;
+  margin-left: 8px;
+}
+
+.caution-box p {
+  text-align: left;
+  margin-bottom: 2px;
+}
+
+.btn-large {
+  font-size: 16px;
+  padding: 12px 32px;
+  margin-top: 16px;
+}

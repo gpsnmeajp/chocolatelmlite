@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Chocolate LM Lite">
+  <meta name="theme-color" content="#3d2820">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+  <link rel="manifest" href="manifest.json">
+  <title>設定 - Chocolate LM Lite</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/setting.css">
+</head>
+<body>
+  <div class="app-container">
+    <div class="header">
+      <button class="back-btn" onclick="goBack()" title="会話画面に戻る">
+        <svg viewBox="0 0 24 24">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <button class="save-button btn-primary" onclick="saveSettings()">保存</button>
+      <div class="header-content">
+        <div class="logo">設定</div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="setting-container">
+        <h2 style="margin-bottom: 20px;">ペルソナ設定</h2>
+        <div class="reference-labels">
+          <span class="reference-label" id="generalEndpointLabel" hidden></span>
+          <span class="reference-label" id="generalDefaultModelLabel" hidden></span>
+        </div>
+        
+        <div class="form-group">
+          <label>表示名</label>
+          <input type="text" id="displayName" value="読み込み中..." placeholder="ペルソナの表示名">
+        </div>
+        
+        <div class="form-group">
+          <label>言語モデル名 (空欄で既定のモデルを使用)</label>
+          <input type="text" id="modelName" value="" placeholder="例: gpt-4o, claude-3-5-sonnet-20241022">
+        </div>
+        
+        <div class="form-group">
+          <label>システムプロンプト</label>
+          <textarea id="systemPrompt" rows="10" placeholder="アシスタントの役割や指示を入力...">あなたは親切で役立つアシスタントです。ユーザーの質問に丁寧に答えてください。</textarea>
+        </div>
+
+        <details class="advanced-settings">
+          <summary>
+            <span class="advanced-settings__icon">▶</span>
+            <span class="advanced-settings__label">応用的な設定</span>
+          </summary>
+          <div class="advanced-settings__content">
+            <p class="form-hint"><b>※これらの機能は、システム設定からオンにする必要があります</b></p>
+            <div class="form-group">
+              <label>定期タイマー周期 (分)</label>
+              <input type="number" id="timerCycle" value="0" min="0" step="1" placeholder="0">
+              <p class="form-hint">定期的に自動でペルソナを起動することが出来ます。一定回数で自動停止します。(0=無効)</p>
+            </div>
+
+            <div class="form-group">
+              <label>Webhook URL</label>
+              <input type="url" id="webhookUrl" value="">
+            </div>
+
+            <div class="form-group">
+              <label>Webhook本文</label>
+              <textarea id="webhookBody" rows="5"></textarea>
+              <p class="form-hint">POSTで送信されます。%text%と記載した箇所が本文に置換されます。(URLか本文が空欄の場合は送信されません)</p>
+            </div>
+          </div>
+        </details>
+
+        <div class="info-message">
+          💡 <strong>メモリについて:</strong><br>
+          メモリはペルソナごとに保存されます。以下の一覧で現在の内容を確認できます。編集するには <code>memory.yaml</code> を直接編集してください。
+        </div>
+
+        <div class="memory-section">
+          <div class="memory-header">
+            <h3 class="section-title">メモリ一覧</h3>
+            <span class="memory-count" id="memoryCount" hidden></span>
+          </div>
+          <div class="memory-list" id="memoryList">
+            <div class="memory-loading" id="memoryLoading">読み込み中...</div>
+            <div class="memory-message" id="memoryEmpty" hidden>メモリが登録されていません。</div>
+            <div class="memory-message memory-message--error" id="memoryError" hidden>メモリを取得できませんでした。時間を置いて再度お試しください。</div>
+            <div class="memory-items" id="memoryItems"></div>
+          </div>
+        </div>
+        
+        <div class="info-message">
+          🖼️ <strong>アイコン・背景画像について:</strong><br>
+          この画面からアップロードできます。直接ファイルを置き換える場合は、アイコンを <code>user.png</code>, <code>assistant.png</code>、背景画像を <code>background.png</code> としてペルソナフォルダに格納してください。
+        </div>
+
+        <div class="asset-section">
+          <h3 class="section-title">アイコン・背景画像</h3>
+          <div class="asset-grid">
+            <div class="asset-card">
+              <div class="asset-title">ユーザーアイコン</div>
+              <div class="asset-preview" data-asset-preview-wrapper="user">
+                <img data-asset-preview="user" alt="ユーザーアイコンのプレビュー">
+                <span class="asset-empty" data-asset-placeholder="user">画像が設定されていません</span>
+              </div>
+              <p class="asset-hint">正方形推奨・PNG/JPG対応</p>
+              <div class="asset-actions">
+                <input type="file" id="asset-input-user" data-asset-input="user" accept="image/*" hidden>
+                <button type="button" class="btn-secondary" data-asset-select="user">画像を選択</button>
+              </div>
+            </div>
+
+            <div class="asset-card">
+              <div class="asset-title">アシスタントアイコン</div>
+              <div class="asset-preview" data-asset-preview-wrapper="assistant">
+                <img data-asset-preview="assistant" alt="アシスタントアイコンのプレビュー">
+                <span class="asset-empty" data-asset-placeholder="assistant">画像が設定されていません</span>
+              </div>
+              <p class="asset-hint">正方形推奨・PNG/JPG対応</p>
+              <div class="asset-actions">
+                <input type="file" id="asset-input-assistant" data-asset-input="assistant" accept="image/*" hidden>
+                <button type="button" class="btn-secondary" data-asset-select="assistant">画像を選択</button>
+              </div>
+            </div>
+
+            <div class="asset-card">
+              <div class="asset-title">背景画像</div>
+              <div class="asset-preview asset-preview--wide" data-asset-preview-wrapper="background">
+                <img data-asset-preview="background" alt="背景画像のプレビュー">
+                <span class="asset-empty" data-asset-placeholder="background">画像が設定されていません</span>
+              </div>
+              <p class="asset-hint">横長推奨・最大辺2048pxまで自動縮小</p>
+              <div class="asset-actions">
+                <input type="file" id="asset-input-background" data-asset-input="background" accept="image/*" hidden>
+                <button type="button" class="btn-secondary" data-asset-select="background">画像を選択</button>
+              </div>
+            </div>
+          </div>
+          <p class="asset-note">※ 大きな画像はサーバー側で自動的にPNGへ変換・縮小されます。</p>
+          <p class="asset-note">保存ボタンは右上にあります。</p>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+  
+  <script src="js/common.js" defer></script>
+  <script src="js/setting.js" defer></script>
+</body>
+</html>

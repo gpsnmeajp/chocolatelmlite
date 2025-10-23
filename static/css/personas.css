@@ -1,0 +1,328 @@
+/* ペルソナ管理画面専用スタイル */
+.app-container {
+  max-width: none;
+  width: 100vw;
+}
+
+.header {
+  width: 100%;
+  position: relative;
+}
+
+.header-icons {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+.header-content {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.main-content {
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.back-btn {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.back-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.back-btn:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.restart-btn {
+  color: var(--danger-color);
+}
+
+.restart-btn:hover {
+  color: var(--danger-color);
+  background-color: rgba(255, 87, 87, 0.15);
+}
+
+.actions-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.persona-table {
+  background-color: var(--bg-secondary);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.persona-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.persona-row:hover {
+  background-color: var(--hover-bg);
+}
+
+.persona-row.active {
+  background-color: rgba(255, 140, 66, 0.1);
+}
+
+#personaRows.is-disabled {
+  pointer-events: none;
+}
+
+#personaRows.is-disabled .persona-row {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.loading-overlay {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--loading-overlay-bg);
+  color: var(--text-primary);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px;
+  z-index: 10;
+}
+
+.hint {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.loading-overlay.active {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.loading-overlay .spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: persona-spin 1s linear infinite;
+  margin: 0 auto;
+  position: fixed;
+}
+
+.loading-overlay .loading-text {
+  margin-top: 64px;
+}
+
+@keyframes persona-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.persona-row.header {
+  background-color: var(--bg-tertiary);
+  cursor: default;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: normal;
+}
+
+.persona-row.header:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.persona-name {
+  font-weight: 500;
+}
+
+.persona-id {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.persona-date {
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+@media (max-width: 600px) {
+  .persona-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .persona-row.header {
+    display: none;
+  }
+
+  .persona-id::before {
+    content: 'ID: ';
+    color: var(--text-secondary);
+  }
+
+  .persona-date::before {
+    content: '最終更新: ';
+    color: var(--text-secondary);
+  }
+
+  .persona-date {
+    text-align: left;
+  }
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal.active {
+  display: flex;
+}
+
+.modal-content {
+  background-color: var(--bg-secondary);
+  border-radius: 6px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  border: 1px solid var(--border-color);
+}
+
+.modal-title {
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: var(--accent-color);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.app-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.app-modal.active {
+  display: flex;
+}
+
+.app-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.app-modal-content {
+  position: relative;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 520px;
+  width: min(90vw, 520px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+  color: var(--text-primary);
+  z-index: 1;
+}
+
+.app-modal-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.app-modal-body {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.app-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.app-modal-close {
+  background-color: var(--success-color);
+  border: 1px solid var(--success-color);
+  border-radius: 4px;
+  color: #fff;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.app-modal-close:hover {
+  background-color: var(--success-hover-color);
+  border-color: var(--success-hover-color);
+}

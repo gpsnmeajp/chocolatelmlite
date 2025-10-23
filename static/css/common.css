@@ -1,0 +1,387 @@
+/* Chocolate LM Lite - 共通スタイルシート */
+
+:root {
+  color-scheme: dark;
+  /* ダークチョコレートテーマ (デフォルト) */
+  --bg-primary: #3d2820;
+  --bg-secondary: #4a342a;
+  --bg-tertiary: #2a1c15;
+  --text-primary: #fff8e7;
+  --text-secondary: #d4a574;
+  --border-color: #6b4a3a;
+  --accent-color: #ff8c42;
+  --hover-bg: rgba(255, 140, 66, 0.2);
+  --danger-color: #ff5757;
+  --success-color: #4caf50;
+  --link-color: #66d9ef;
+  --link-hover-color: #a0e7ff;
+  --header-gradient-start: #2a1810;
+  --header-gradient-end: #3d2820;
+  --header-border-color: rgba(107, 74, 58, 0.5);
+  --loading-overlay-bg: rgba(61, 40, 32, 0.85);
+  --logo-gradient-start: #ff8c42;
+  --logo-gradient-end: #ff6b35;
+  --focus-ring-color: rgba(255, 140, 66, 0.3);
+  --select-chevron-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23d4a574' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  --success-hover-color: #45a049;
+  --danger-hover-color: #e04545;
+  
+  /* 背景画像用 */
+  --chat-background-overlay-color: rgba(0, 0, 0, 0.38);
+  
+  /* セーフエリアインセット */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    /* ミルクチョコレートテーマ */
+    --bg-primary: #fff8f0;
+    --bg-secondary: #ffeedd;
+    --bg-tertiary: #fffcf7;
+    --text-primary: #2d1f1a;
+    --text-secondary: #8b6f47;
+    --border-color: #d4b896;
+    --hover-bg: rgba(139, 111, 71, 0.12);
+    --link-color: #0099cc;
+    --link-hover-color: #0077aa;
+    --chat-background-overlay-color: rgba(255, 248, 240, 0.6);
+    --header-gradient-start: #fff0db;
+    --header-gradient-end: #ffe4c3;
+    --header-border-color: rgba(212, 184, 150, 0.7);
+    --loading-overlay-bg: rgba(255, 248, 240, 0.85);
+    --logo-gradient-start: #d96e2d;
+    --logo-gradient-end: #c4581d;
+    --focus-ring-color: rgba(255, 140, 66, 0.35);
+    --select-chevron-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b6f47' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    --success-hover-color: #3f9442;
+    --danger-hover-color: #d04545;
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  background-color: var(--bg-primary);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.5;
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: var(--link-color);
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px 12px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(255, 140, 66, 0.3);
+}
+
+select {
+  cursor: pointer;
+  appearance: none;
+  background-image: var(--select-chevron-svg);
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 32px;
+}
+
+/* コンテナレイアウト */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+  position: relative;
+}
+
+/* ヘッダー */
+.header {
+  background: linear-gradient(135deg, var(--header-gradient-start), var(--header-gradient-end));
+  border-bottom: 1px solid var(--header-border-color);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+  background: linear-gradient(135deg, var(--logo-gradient-start), var(--logo-gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-icons {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+
+/* メインコンテンツ */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  background-color: var(--bg-primary);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ボタンスタイル */
+.btn-primary {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--success-hover-color);
+}
+
+.btn-secondary {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--hover-bg);
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--danger-hover-color);
+}
+
+/* カード */
+.card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+/* フォームグループ */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* テーブル */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+th {
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+tr:hover {
+  background-color: var(--hover-bg);
+  cursor: pointer;
+}
+
+/* 情報バー */
+.info-bar {
+  background-color: var(--bg-tertiary);
+  border-top: 1px solid var(--border-color);
+  padding: 8px 16px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.info-bar.warning {
+  color: var(--danger-color);
+  font-weight: bold;
+}
+
+/* ユーティリティクラス */
+.text-center {
+  text-align: center;
+}
+
+.mb-1 {
+  margin-bottom: 8px;
+}
+
+.mb-2 {
+  margin-bottom: 16px;
+}
+
+.mb-3 {
+  margin-bottom: 24px;
+}
+
+.mt-1 {
+  margin-top: 8px;
+}
+
+.mt-2 {
+  margin-top: 16px;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.gap-1 {
+  gap: 8px;
+}
+
+.gap-2 {
+  gap: 16px;
+}
+
+/* レスポンシブ */
+@media (max-width: 600px) {
+  .main-content {
+    padding: 12px;
+  }
+  
+  .card {
+    padding: 12px;
+  }
+}

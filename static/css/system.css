@@ -1,0 +1,167 @@
+/* System settings screen styles */
+.settings-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 0 auto;
+  max-width: 760px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.settings-title {
+  font-size: 22px;
+  margin-bottom: 12px;
+}
+
+.settings-lead {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setting-item {
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 680px) {
+  .setting-item {
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+    align-items: center;
+  }
+}
+
+.setting-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setting-label {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.setting-description {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.setting-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.setting-control.has-note {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.setting-control input[type="text"],
+.setting-control input[type="url"],
+.setting-control input[type="password"],
+.setting-control input[type="number"],
+.setting-control textarea {
+  width: 100%;
+}
+
+.setting-control .toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.setting-control .toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-color);
+}
+
+.advanced-settings {
+  margin-top: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: var(--bg-tertiary);
+}
+
+
+.advanced-settings > summary {
+  list-style: none;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.advanced-settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-settings-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.form-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#saveStatus {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+#saveStatus.success {
+  color: var(--success-color);
+}
+
+#saveStatus.error {
+  color: var(--danger-color);
+}
+
+.loading-placeholder {
+  color: var(--text-secondary);
+  padding: 24px 0;
+  text-align: center;
+}
+
+.setting-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.back-button {
+  margin-right: auto;
+}
