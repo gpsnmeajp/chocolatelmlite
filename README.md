@@ -113,6 +113,9 @@ winget install --id Microsoft.DotNet.SDK.8
 dotnet run
 ```
 
+### Mac
+Microsoft公式サイトからSDKをダウンロードしてインストールしてください。
+
 ### Ubuntu
 
 ```bash
