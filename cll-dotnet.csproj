@@ -6,9 +6,6 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <MagickCopyNativeWindows>true</MagickCopyNativeWindows>
-    <MagickCopyNativeLinux>true</MagickCopyNativeLinux>
-    <MagickCopyNativeLinuxMusl>true</MagickCopyNativeLinuxMusl>
-    <MagickCopyNativeMacOS>true</MagickCopyNativeMacOS>
   </PropertyGroup>
 
   <ItemGroup>
