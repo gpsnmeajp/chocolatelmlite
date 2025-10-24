@@ -45,7 +45,7 @@ namespace CllDotnet
         public string DefaultModel { get; set; } = "google/gemini-2.5-flash";
         public string YourName { get; set; } = "あなた";
         public int BreakReminderThreshold { get; set; } = 60;
-        public int TalkHistoryCutoffThreshold { get; set; } = 100 * 1000; //100Kトークン
+        public int TalkHistoryCutoffThreshold { get; set; } = 40 * 1000; //40Kトークン
         public bool LocalOnly { get; set; } = false;
 
         //--- 応用設定 ---
@@ -70,7 +70,7 @@ namespace CllDotnet
         public bool EnableConsoleMonitor { get; set; } = true;
         public bool EnableTimerGenerate { get; set; } = false;
         public bool EnableMcpTools { get; set; } = false;
-        public int PhotoCutoff { get; set; } = 32;
+        public int PhotoCutoff { get; set; } = 10;
         public bool EnableImageGeneration { get; set; } = false;
         public string ImageGenerationEndpointUrl { get; set; } = "";
         public string ImageGenerationApiKey { get; set; } = "";

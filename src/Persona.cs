@@ -6,8 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
+using ImageMagick;
 
 namespace CllDotnet
 {
@@ -378,20 +377,23 @@ namespace CllDotnet
             }
 
             // 画像データなので1024x1024未満にリサイズする。
-            using (var image = Image.Load(data))
+            using (var image = new MagickImage(data))
             {
                 if (image.Width > 1024 || image.Height > 1024)
                 {
-                    image.Mutate(x => x.Resize(new ResizeOptions
+                    image.Resize(new MagickGeometry
                     {
-                        Size = new Size(1024, 1024),
-                        Mode = ResizeMode.Max
-                    }));
+                        Width = 1024,
+                        Height = 1024,
+                        IgnoreAspectRatio = false,
+                        Greater = true
+                    });
+
                     using (var ms = new MemoryStream())
                     {
-                        image.SaveAsPng(ms);
+                        image.Format = MagickFormat.Png;
+                        image.Write(ms);
                         data = ms.ToArray();
-                        //ファイル名の拡張子を.pngに変更する
                         filename = Path.ChangeExtension(filename, ".png");
                     }
                 }
@@ -453,21 +455,25 @@ namespace CllDotnet
             }
 
             // pngでない場合はpngに変換する。
-            // 画像データなので2048x2048未満にリサイズする。
-            using (var image = Image.Load(data))
+            using (var image = new MagickImage(data))
             {
                 if (image.Width > 2048 || image.Height > 2048)
                 {
-                    image.Mutate(x => x.Resize(new ResizeOptions
+                    image.Resize(new MagickGeometry
                     {
-                        Size = new Size(2048, 2048),
-                        Mode = ResizeMode.Max
-                    }));
+                        Width = 2048,
+                        Height = 2048,
+                        IgnoreAspectRatio = false,
+                        Greater = true
+                    });
                 }
+
                 using (var ms = new MemoryStream())
                 {
-                    image.SaveAsPng(ms);
+                    image.Format = MagickFormat.Png;
+                    image.Write(ms);
                     data = ms.ToArray();
+                    filename = Path.ChangeExtension(filename, ".png");
                 }
             }
 

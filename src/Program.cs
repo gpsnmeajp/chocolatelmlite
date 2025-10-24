@@ -3,12 +3,14 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 
 /*
-dotnet publish -c Release --self-contained true -r win-x64
-dotnet publish -c Release --self-contained true -r linux-x64
-dotnet publish -c Release --self-contained true -r osx-x64
+dotnet publish -c Release --self-contained true -r win-x64 -p:PublishSingleFile=True
+dotnet publish -c Release --self-contained true -r linux-x64 -p:PublishSingleFile=True
+dotnet publish -c Release --self-contained true -r osx-x64 -p:PublishSingleFile=True
+
+dotnet tool install --global nuget-license
+nuget-license -i cll-dotnet.sln -o Markdown > 3rd_license.md
 */
 
 namespace CllDotnet

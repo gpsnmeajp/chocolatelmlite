@@ -110,6 +110,7 @@ namespace CllDotnet
                 {
                     listenOptions.Protocols = HttpProtocols.Http1;
                 });
+                serverOptions.Limits.MaxRequestBodySize = 100 * 1024 * 1024; // リクエストボディの最大サイズを100MBに設定
             });
 
             // ログレベルをWarningに設定して情報ログを抑制
