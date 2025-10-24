@@ -273,6 +273,12 @@ const FIELD_DEFINITIONS = {
     placeholder: 'google/gemini-2.5-flash-image など',
     note: '<a href="https://openrouter.ai/models?fmt=cards&output_modalities=image">OpenRouterの場合はこちらからモデルを探せます</a>',
     order: 223
+  },
+  DebugMode: {
+    label: 'デバッグモード',
+    description: '追加のログ出力などデバッグ向け機能を有効にします。性能が落ちることがあります。通常はオフのままにしてください。',
+    valueType: 'boolean',
+    order: 999
   }
 };
 

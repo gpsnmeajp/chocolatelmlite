@@ -379,7 +379,7 @@ async function loadGeneralSettings() {
 
     if (!endpoint) {
       await promptEndpointSetup();
-      return false;
+      return true; // 余計なエラーメッセージを出さない
     }
 
     const rawName = typeof settings.YourName === 'string' ? settings.YourName : '';

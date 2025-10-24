@@ -75,6 +75,7 @@ namespace CllDotnet
         public string ImageGenerationEndpointUrl { get; set; } = "";
         public string ImageGenerationApiKey { get; set; } = "";
         public string ImageGenerationModel { get; set; } = "google/gemini-2.5-flash-image";
+        public bool DebugMode { get; set; } = false;
 
 
         public YamlGeneral ShallowCopy()

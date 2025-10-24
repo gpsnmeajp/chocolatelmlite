@@ -109,7 +109,7 @@ namespace CllDotnet
                 }
                 MyLog.LogWrite($"LLMモデル: {model}");
                 // カスタムHttpHandlerを作成
-                var httpHandler = new OpenRouterHttpHandler();
+                var httpHandler = new OpenRouterHttpHandler(fileManager);
                 var openAIClientOptions = new OpenAIClientOptions()
                 {
                     Endpoint = new Uri(fileManager.generalSettings.LlmEndpointUrl),
@@ -191,7 +191,10 @@ namespace CllDotnet
                 List<ChatMessage> chatMessages = talkEntryListToChatMessageList(mergedMessages, systemprompt);
 
                 // デバッグ出力
-                MyLog.DebugFileWrite("chat_messages.json", Serializer.JsonSerialize(chatMessages, true));
+                if (fileManager.generalSettings.DebugMode)
+                {
+                    MyLog.DebugFileWrite("chat_messages.json", Serializer.JsonSerialize(chatMessages, true));
+                }
 
                 MyLog.LogWrite($"生成開始...");
                 await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "started" } });

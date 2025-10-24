@@ -223,6 +223,9 @@ namespace CllDotnet
                     case "EnableConsoleMonitor":
                         settings.EnableConsoleMonitor = kvp.Value.GetBoolean();
                         break;
+                    case "DebugMode":
+                        settings.DebugMode = kvp.Value.GetBoolean();
+                        break;
                     case "EnableTimerGenerate":
                         settings.EnableTimerGenerate = kvp.Value.GetBoolean();
                         break;

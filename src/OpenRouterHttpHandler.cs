@@ -9,8 +9,11 @@ namespace CllDotnet
     public class OpenRouterHttpHandler : DelegatingHandler
     {
         public int lastStatusCode { get; private set; } = 0;
-        public OpenRouterHttpHandler()
+        private readonly FileManager _fileManager;
+        public OpenRouterHttpHandler(FileManager fileManager)
         {
+            _fileManager = fileManager;
+
             // 内部でHttpClientHandlerを使用
             InnerHandler = new HttpClientHandler();
         }
@@ -20,8 +23,11 @@ namespace CllDotnet
             // リクエスト送信をログ出力
             MyLog.LogWrite($"Sending request to {request.RequestUri} ...");
 
-            // リクエストをデバッグファイルに保存
-            MyLog.DebugFileWrite("request.json", request.Content != null ? await request.Content.ReadAsStringAsync() : "No Content");
+            // リクエストをデバッグファイルに保存]
+            if (_fileManager.generalSettings.DebugMode)
+            {
+                MyLog.DebugFileWrite("request.json", request.Content != null ? await request.Content.ReadAsStringAsync() : "No Content");
+            }
 
             // ヘッダーを追加
             request.Headers.Add("X-Title", "Chocolate LM Lite");
@@ -34,7 +40,11 @@ namespace CllDotnet
             lastStatusCode = (int)response.StatusCode;
 
             // レスポンスをデバッグファイルに保存
-            MyLog.DebugFileWrite("response.json", response.Content != null ? await response.Content.ReadAsStringAsync() : "No Content");
+            if (_fileManager.generalSettings.DebugMode)
+            {
+                // ストリーミング処理が無効になるため注意
+                MyLog.DebugFileWrite("response.json", response.Content != null ? await response.Content.ReadAsStringAsync() : "No Content");
+            }
 
             // 元のレスポンスを返す
             return response;

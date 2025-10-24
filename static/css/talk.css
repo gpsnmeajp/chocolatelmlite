@@ -1,7 +1,7 @@
 /* 会話画面専用スタイル */
 html,
 body {
-  background-color: var(--bg-primary) !important;
+  background-color: var(--bg-secondary) !important;
 }
 
 .app-container {
@@ -322,6 +322,7 @@ body {
   background-color: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   padding: 16px 16px;
+  padding-bottom: 4px;
   flex-shrink: 0;
   width: 100%;
   position: relative;
@@ -451,6 +452,13 @@ body {
 
 .message.live-generation .message-text {
   opacity: 0.9;
+}
+
+.hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
 }
 
 .live-status-badge {

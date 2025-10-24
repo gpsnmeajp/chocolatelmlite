@@ -85,7 +85,11 @@ namespace CllDotnet
 
             // リクエストボディのシリアライズ
             var jsonPayload = JsonSerializer.Serialize(requestBody);
-            MyLog.DebugFileWrite("image_generation_request.json", jsonPayload);
+
+            if (settings.DebugMode)
+            {
+                MyLog.DebugFileWrite("image_generation_request.json", jsonPayload);
+            }
             httpRequest.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             // API呼び出しの実行
@@ -138,7 +142,11 @@ namespace CllDotnet
 
             // レスポンスの処理
             var responseContent = await httpResponse.Content.ReadAsStringAsync();
-            MyLog.DebugFileWrite("image_generation_response.json", responseContent);
+
+            if (settings.DebugMode)
+            {
+                MyLog.DebugFileWrite("image_generation_response.json", responseContent);
+            }
 
             string textResponse = string.Empty;
 
