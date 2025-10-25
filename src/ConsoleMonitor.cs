@@ -39,7 +39,7 @@ namespace CllDotnet
             {
                 Console.Clear();
                 Console.WriteLine();
-                Console.WriteLine("Chocolate LM Lite 🍫 サーバーコンソール");
+                Console.WriteLine("Chocolate LM Lite サーバーコンソール");
 
                 var timeZone = fileManager.GetTimeZoneInfo();
                 var localTime = TimeZoneInfo.ConvertTime(DateTime.UtcNow, timeZone);
