@@ -91,280 +91,283 @@ namespace CllDotnet
 
         public async Task<bool> GenerateResponseAsync()
         {
-            cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new CancellationTokenSource().Token, Program.cts.Token);
-            isGenerating = true;
-            tools.isImageGenerated = false; // 連続作成制限を解除
-
-            try
+            using (cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new CancellationTokenSource().Token, Program.cts.Token))
             {
-                responseText = "";
-                var cancellationToken = cancellationTokenSource.Token;
-                var activePersonaSettings = fileManager.GetActivePersonaSettings();
-                var model = activePersonaSettings.Model;
-                _ = fileManager.LoadGeneralSettings(); // 全体設定を反映しておく(LLMパラメータなどあるため)
 
-                if (string.IsNullOrEmpty(model))
-                {
-                    model = fileManager.generalSettings.DefaultModel;
-                }
-                MyLog.LogWrite($"LLMモデル: {model}");
-                // カスタムHttpHandlerを作成
-                var httpHandler = new OpenRouterHttpHandler(fileManager);
-                var openAIClientOptions = new OpenAIClientOptions()
-                {
-                    Endpoint = new Uri(fileManager.generalSettings.LlmEndpointUrl),
-                    Transport = new HttpClientPipelineTransport(
-                        new HttpClient(httpHandler)
-                        {
-                            Timeout = TimeSpan.FromSeconds(fileManager.generalSettings.TimeoutSeconds),
-                        }
-                    ),
-                };
-                MyLog.LogWrite($"LLMエンドポイント: {openAIClientOptions.Endpoint}");
+                isGenerating = true;
+                tools.isImageGenerated = false; // 連続作成制限を解除
 
-                // メモ: MSのOpenAIクライアントラッパーも、OpenAIのSDK地獄のような作りになっており、
-                // オプションを与えるためのoverrideなどができない。reasoning_effortなどを与えたいが、方法を見つける必要がある。
-                // (あるいはChatClinetを時前で再実装する)
-
-                var chatClient = new OpenAI.Chat.ChatClient(
-                    model: model ?? "-",
-                    new ApiKeyCredential(fileManager.generalSettings.LlmApiKey ?? "-"), // ローカルLLM等では空文字が許容される場合があるため、null合体演算子で"-"を渡す
-                    openAIClientOptions
-                );
-                MyLog.LogWrite($"APIキーの長さ: {fileManager.generalSettings.LlmApiKey?.Length}文字");
-
-                // ツール呼び出しの構成
-                var client = ChatClientBuilderChatClientExtensions
-                    .AsBuilder(chatClient.AsIChatClient())
-                    .Use(async (IEnumerable<ChatMessage> messages, ChatOptions? options, Func<IEnumerable<ChatMessage>, ChatOptions?, CancellationToken, Task> innerClient, CancellationToken cancellationToken) =>
-                    {
-                        // デバッグ用のメッセージ内容ログ出力
-                        /*
-                        var messageList = messages.ToList();
-                        if(messageList.Count > 0)
-                        {
-                            var firstMessage = messageList[0];
-                            AllContentLogger("[0]", firstMessage.Contents);
-
-                            var lastMessage = messageList[messageList.Count - 1];
-                            AllContentLogger("[last]", lastMessage.Contents);
-                        }
-                        */
-                        await innerClient(messages, options, cancellationToken);
-                    })
-                    .UseFunctionInvocation(configure: options =>
-                    {
-                        options.MaximumIterationsPerRequest = 30;
-                        options.AllowConcurrentInvocation = false;
-                        options.FunctionInvoker = MyFunctionInvoker;
-                    }
-                    )
-                    .Build();
-
-                var systemprompt = SystemPrompt.BuildSystemPrompt(fileManager);
-                MyLog.LogWrite($"システムプロンプト: {systemprompt.Length}文字");
-
-                var talks = fileManager.GetAllTalkHistoryAllFromActivePersonaCached();
-                var messages = Tokens.TrimTalkTokens(systemprompt, talks, fileManager.generalSettings.TalkHistoryCutoffThreshold);
-                messages = PhotoCutoff(new List<TalkEntry>(messages));
-                if (messages.Count == 0)
-                {
-                    var stat = fileManager.GetTalkStatsFromActivePersona();
-                    MyLog.LogWrite($"トーク履歴がすべてカットオフされました。生成を中止します。全システムプロンプトトークン数: {stat?.BuiltSystemPromptTokens} ユーザー入力システムプロンプトトークン数: {stat?.RawSystemPromptTokens}");
-                    var entryEx = new TalkEntry
-                    {
-                        Uuid = Guid.Empty,
-                        Role = TalkRole.ChocolateLM,
-                        Text = $"【Chocolate LM Lite システムエラー】\n会話履歴が全てカットオフされてしまいました。(履歴総数 == 切捨数)\n一言も話しかけることが出来ないため、このままでは会話が成立しません。\n\nトークン上限(TalkHistoryCutoffThreshold)が低すぎるか、システムプロンプトやメモリが大きすぎます。\n(あるいはツールが多すぎる、プロジェクトファイルが多すぎる、直前の発言が巨大すぎるなどもありえます。)\n上限を増やせない場合は、不要な機能を徹底的にオフにすることで解決することがあります。\n\n＊＊＊＊＊\n+ トークン数上限(TalkHistoryCutoffThreshold): {fileManager.generalSettings.TalkHistoryCutoffThreshold}\n+ 全システムプロンプトトークン数: {stat?.BuiltSystemPromptTokens}\n+ うち、ユーザー入力システムプロンプトトークン数: {stat?.RawSystemPromptTokens}\n\n＊＊＊＊＊\n\n{(fileManager.generalSettings.TalkHistoryCutoffThreshold < 32000 ? "⚠️トークン上限(TalkHistoryCutoffThreshold)が 32K 未満のようです(小さすぎる)。設定ミスを疑ってください。\n\n" : "")}※直前の入力が巨大すぎる場合を除き、会話履歴を削除・作り直ししてもこの問題はまず解決しません。\n上記いずれかの設定項目を調整してください。",
-                        ToolDetail = "",
-                        AttachmentId = null,
-                        Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds()
-                    };
-
-                    fileManager.UpsertTalkHistoryToActivePersona(entryEx);
-                    await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
-                    isGenerating = false;
-                    return false;
-                }
-
-                List<TalkEntry> mergedMessages = mergeRoleConsecutiveMessages(messages) ?? new List<TalkEntry>();
-                List<ChatMessage> chatMessages = talkEntryListToChatMessageList(mergedMessages, systemprompt);
-
-                // デバッグ出力
-                if (fileManager.generalSettings.DebugMode)
-                {
-                    MyLog.DebugFileWrite("chat_messages.json", Serializer.JsonSerialize(chatMessages, true));
-                }
-
-                MyLog.LogWrite($"生成開始...");
-                await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "started" } });
-                ChatResponse? response = null;
                 try
                 {
-                    // ストリーミングで応答を取得開始
-                    List<ChatResponseUpdate> updates = [];
+                    responseText = "";
+                    var cancellationToken = cancellationTokenSource.Token;
+                    var activePersonaSettings = fileManager.GetActivePersonaSettings();
+                    var model = activePersonaSettings.Model;
+                    _ = fileManager.LoadGeneralSettings(); // 全体設定を反映しておく(LLMパラメータなどあるため)
 
-                    // タイムアウト設定
-                    using var timeoutCts = new CancellationTokenSource();
-                    timeoutCts.CancelAfter(TimeSpan.FromSeconds(fileManager.generalSettings.TimeoutSeconds));
-                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-
-                    var toolsList = await tools.GetAvailableTools();
-
-                    MyLog.LogWrite($"タイムアウト設定: {fileManager.generalSettings.TimeoutSeconds}秒");
-                    MyLog.LogWrite($"ツール: [{string.Join(", ", toolsList.Select(t => t.Name))}]");
-                    MyLog.LogWrite($"Temperature: {fileManager.generalSettings.Temperature}");
-                    MyLog.LogWrite($"MaxOutputTokens: {fileManager.generalSettings.MaxTokens}");
-
-                    // ストリーミングで応答を取得
-                    await foreach (ChatResponseUpdate update in
-                        client.GetStreamingResponseAsync(chatMessages, new ChatOptions()
-                        {
-                            Temperature = (float)fileManager.generalSettings.Temperature,
-                            ToolMode = ChatToolMode.Auto,
-                            Tools = toolsList,
-                            MaxOutputTokens = fileManager.generalSettings.MaxTokens
-                        }, linkedCts.Token))
+                    if (string.IsNullOrEmpty(model))
                     {
-                        responseText += update.Text;
-                        updates.Add(update);
-                        response = updates.ToChatResponse();
-                        // MyLog.LogWrite($"[進行中] {response.Text}");
-                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "generating" }, { "response", responseText } });
-                        Program.cts.Token.ThrowIfCancellationRequested();
+                        model = fileManager.generalSettings.DefaultModel;
+                    }
+                    MyLog.LogWrite($"LLMモデル: {model}");
+                    // カスタムHttpHandlerを作成
+                    var httpHandler = new OpenRouterHttpHandler(fileManager);
+                    var openAIClientOptions = new OpenAIClientOptions()
+                    {
+                        Endpoint = new Uri(fileManager.generalSettings.LlmEndpointUrl),
+                        Transport = new HttpClientPipelineTransport(
+                            new HttpClient(httpHandler)
+                            {
+                                Timeout = TimeSpan.FromSeconds(fileManager.generalSettings.TimeoutSeconds),
+                            }
+                        ),
+                    };
+                    MyLog.LogWrite($"LLMエンドポイント: {openAIClientOptions.Endpoint}");
+
+                    // メモ: MSのOpenAIクライアントラッパーも、OpenAIのSDK地獄のような作りになっており、
+                    // オプションを与えるためのoverrideなどができない。reasoning_effortなどを与えたいが、方法を見つける必要がある。
+                    // (あるいはChatClinetを時前で再実装する)
+
+                    var chatClient = new OpenAI.Chat.ChatClient(
+                        model: model ?? "-",
+                        new ApiKeyCredential(fileManager.generalSettings.LlmApiKey ?? "-"), // ローカルLLM等では空文字が許容される場合があるため、null合体演算子で"-"を渡す
+                        openAIClientOptions
+                    );
+                    MyLog.LogWrite($"APIキーの長さ: {fileManager.generalSettings.LlmApiKey?.Length}文字");
+
+                    // ツール呼び出しの構成
+                    var client = ChatClientBuilderChatClientExtensions
+                        .AsBuilder(chatClient.AsIChatClient())
+                        .Use(async (IEnumerable<ChatMessage> messages, ChatOptions? options, Func<IEnumerable<ChatMessage>, ChatOptions?, CancellationToken, Task> innerClient, CancellationToken cancellationToken) =>
+                        {
+                            // デバッグ用のメッセージ内容ログ出力
+                            /*
+                            var messageList = messages.ToList();
+                            if(messageList.Count > 0)
+                            {
+                                var firstMessage = messageList[0];
+                                AllContentLogger("[0]", firstMessage.Contents);
+
+                                var lastMessage = messageList[messageList.Count - 1];
+                                AllContentLogger("[last]", lastMessage.Contents);
+                            }
+                            */
+                            await innerClient(messages, options, cancellationToken);
+                        })
+                        .UseFunctionInvocation(configure: options =>
+                        {
+                            options.MaximumIterationsPerRequest = 30;
+                            options.AllowConcurrentInvocation = false;
+                            options.FunctionInvoker = MyFunctionInvoker;
+                        }
+                        )
+                        .Build();
+
+                    var systemprompt = SystemPrompt.BuildSystemPrompt(fileManager);
+                    MyLog.LogWrite($"システムプロンプト: {systemprompt.Length}文字");
+
+                    var talks = fileManager.GetAllTalkHistoryAllFromActivePersonaCached();
+                    var messages = Tokens.TrimTalkTokens(systemprompt, talks, fileManager.generalSettings.TalkHistoryCutoffThreshold);
+                    messages = PhotoCutoff(new List<TalkEntry>(messages));
+                    if (messages.Count == 0)
+                    {
+                        var stat = fileManager.GetTalkStatsFromActivePersona();
+                        MyLog.LogWrite($"トーク履歴がすべてカットオフされました。生成を中止します。全システムプロンプトトークン数: {stat?.BuiltSystemPromptTokens} ユーザー入力システムプロンプトトークン数: {stat?.RawSystemPromptTokens}");
+                        var entryEx = new TalkEntry
+                        {
+                            Uuid = Guid.Empty,
+                            Role = TalkRole.ChocolateLM,
+                            Text = $"【Chocolate LM Lite システムエラー】\n会話履歴が全てカットオフされてしまいました。(履歴総数 == 切捨数)\n一言も話しかけることが出来ないため、このままでは会話が成立しません。\n\nトークン上限(TalkHistoryCutoffThreshold)が低すぎるか、システムプロンプトやメモリが大きすぎます。\n(あるいはツールが多すぎる、プロジェクトファイルが多すぎる、直前の発言が巨大すぎるなどもありえます。)\n上限を増やせない場合は、不要な機能を徹底的にオフにすることで解決することがあります。\n\n＊＊＊＊＊\n+ トークン数上限(TalkHistoryCutoffThreshold): {fileManager.generalSettings.TalkHistoryCutoffThreshold}\n+ 全システムプロンプトトークン数: {stat?.BuiltSystemPromptTokens}\n+ うち、ユーザー入力システムプロンプトトークン数: {stat?.RawSystemPromptTokens}\n\n＊＊＊＊＊\n\n{(fileManager.generalSettings.TalkHistoryCutoffThreshold < 32000 ? "⚠️トークン上限(TalkHistoryCutoffThreshold)が 32K 未満のようです(小さすぎる)。設定ミスを疑ってください。\n\n" : "")}※直前の入力が巨大すぎる場合を除き、会話履歴を削除・作り直ししてもこの問題はまず解決しません。\n上記いずれかの設定項目を調整してください。",
+                            ToolDetail = "",
+                            AttachmentId = null,
+                            Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds()
+                        };
+
+                        fileManager.UpsertTalkHistoryToActivePersona(entryEx);
+                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
+                        isGenerating = false;
+                        return false;
                     }
 
-                }
-                catch (OperationCanceledException)
-                {
-                    MyLog.LogWrite("生成がキャンセルされたか、タイムアウトしました。");
-                    // その時点までの応答を応答とする。
-                    await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "canceled" } });
+                    List<TalkEntry> mergedMessages = mergeRoleConsecutiveMessages(messages) ?? new List<TalkEntry>();
+                    List<ChatMessage> chatMessages = talkEntryListToChatMessageList(mergedMessages, systemprompt);
+
+                    // デバッグ出力
+                    if (fileManager.generalSettings.DebugMode)
+                    {
+                        MyLog.DebugFileWrite("chat_messages.json", Serializer.JsonSerialize(chatMessages, true));
+                    }
+
+                    MyLog.LogWrite($"生成開始...");
+                    await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "started" } });
+                    ChatResponse? response = null;
+                    try
+                    {
+                        // ストリーミングで応答を取得開始
+                        List<ChatResponseUpdate> updates = [];
+
+                        // タイムアウト設定
+                        using var timeoutCts = new CancellationTokenSource();
+                        timeoutCts.CancelAfter(TimeSpan.FromSeconds(fileManager.generalSettings.TimeoutSeconds));
+                        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+                        var toolsList = await tools.GetAvailableTools();
+
+                        MyLog.LogWrite($"タイムアウト設定: {fileManager.generalSettings.TimeoutSeconds}秒");
+                        MyLog.LogWrite($"ツール: [{string.Join(", ", toolsList.Select(t => t.Name))}]");
+                        MyLog.LogWrite($"Temperature: {fileManager.generalSettings.Temperature}");
+                        MyLog.LogWrite($"MaxOutputTokens: {fileManager.generalSettings.MaxTokens}");
+
+                        // ストリーミングで応答を取得
+                        await foreach (ChatResponseUpdate update in
+                            client.GetStreamingResponseAsync(chatMessages, new ChatOptions()
+                            {
+                                Temperature = (float)fileManager.generalSettings.Temperature,
+                                ToolMode = ChatToolMode.Auto,
+                                Tools = toolsList,
+                                MaxOutputTokens = fileManager.generalSettings.MaxTokens
+                            }, linkedCts.Token))
+                        {
+                            responseText += update.Text;
+                            updates.Add(update);
+                            response = updates.ToChatResponse();
+                            // MyLog.LogWrite($"[進行中] {response.Text}");
+                            await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "generating" }, { "response", responseText } });
+                            Program.cts.Token.ThrowIfCancellationRequested();
+                        }
+
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        MyLog.LogWrite("生成がキャンセルされたか、タイムアウトしました。");
+                        // その時点までの応答を応答とする。
+                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "canceled" } });
+                    }
+                    catch (Exception ex)
+                    {
+                        MyLog.LogWrite($"生成中にエラーが発生しました: {ex.Message} {ex.StackTrace}");
+                        AllContentLogger("[result]", response?.Messages.LastOrDefault()?.Contents ?? []);
+                        string addition = "不明な通信異常";
+
+                        // ステータスコードに応じた追加メッセージ
+                        var statusCodeEx = httpHandler.lastStatusCode;
+
+                        switch (statusCodeEx)
+                        {
+                            case 0:
+                                addition = "ネットワークに接続できません。エンドポイントURLやネットワーク環境をご確認ください。";
+                                break;
+                            case 400:
+                                addition = "リクエストが不正です。入力値の不足・形式の誤り、またはCORSの問題が考えられます。";
+                                break;
+                            case 401:
+                                addition = "認証に失敗しました。APIキーが無効か期限切れの可能性があります。";
+                                break;
+                            case 402:
+                                addition = "クレジット残高不足です。クレジットを追加して再試行してください。";
+                                break;
+                            case 403:
+                                addition = "利用が許可されていない、URLが間違っている、あるいは、入力が有害と判断され拒否されました。内容を見直してください。";
+                                break;
+                            case 404:
+                                addition = "モデルが見つかりません。モデル名が正しいか確認してください。";
+                                break;
+                            case 408:
+                                addition = "タイムアウトしました。再試行するか、Base URLやネットワーク環境をご確認ください。";
+                                break;
+                            case 429:
+                                addition = "リクエストが多すぎます。しばらく待ってから再試行してください。";
+                                break;
+                            case 500:
+                                addition = "サーバー内部に問題が発生しています。しばらく待ってから再試行してください。";
+                                break;
+                            case 502:
+                                addition = "通信に失敗しました。接続先が合っている場合、選択したモデルがダウンしているか、不正な応答を返しました。モデル変更や再試行を検討してください。";
+                                break;
+                            case 503:
+                                addition = "要求を満たすプロバイダが見つかりません。ルーティング条件やモデル設定を見直してください。";
+                                break;
+                        }
+                        MyLog.LogWrite($"HTTPステータスコード: {statusCodeEx} {addition}");
+
+                        var text = $"【Chocolate LM Lite システムエラー】\n生成中にエラーが発生し、処理が中断されました。\n編集して再送信することでリトライできます。 \n理由: {statusCodeEx} {addition}";
+                        AppendTalkEntry(TalkRole.ChocolateLM, text, ex.Message);
+
+                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
+                        isGenerating = false;
+                        return false;
+                    }
+
+                    var statusCode = httpHandler.lastStatusCode;
+                    MyLog.LogWrite($"HTTPステータスコード: {statusCode}");
+                    MyLog.LogWrite($"[生成完了] {response?.Text}");
+                    AllContentLogger("[result]", response?.Messages.LastOrDefault()?.Contents ?? []);
+                    var usc = response?.Usage;
+                    if (usc != null)
+                    {
+                        MyLog.LogWrite($"トークン使用量: 入力 {usc.InputTokenCount} トークン, 出力 {usc.OutputTokenCount} トークン, 合計 {usc.TotalTokenCount} トークン");
+                    }
+
+                    string finalResponseText = responseText ?? ""; // ツール呼び出しの度にresponseTextがクリアされるため、最終的なresponseTextを使用する(responseからだと全文入ってしまうため)
+                    string finalReasoningText = response?.Messages.LastOrDefault()?.Contents
+                        .OfType<TextReasoningContent>()
+                        .FirstOrDefault()?.Text ?? "";
+
+                    // <think></think>タグに囲まれている内容は、finalReasoningTextに格納する
+                    var reasoningMatch = System.Text.RegularExpressions.Regex.Match(finalResponseText, @"<think>(.*?)<\/think>", System.Text.RegularExpressions.RegexOptions.Singleline);
+                    if (reasoningMatch.Success)
+                    {
+                        finalReasoningText = reasoningMatch.Groups[1].Value.Trim();
+                        // finalResponseTextからは、<think>タグを削除する
+                        finalResponseText = System.Text.RegularExpressions.Regex.Replace(finalResponseText, @"<think>.*?<\/think>", "", System.Text.RegularExpressions.RegexOptions.Singleline).Trim();
+                    }
+
+                    AppendTalkEntry(TalkRole.Assistant, finalResponseText, finalReasoningText);
+
+                    await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
+
+                    // 生成完了Webhook
+                    if (fileManager.generalSettings.EnableWebhook)
+                    {
+                        if (!string.IsNullOrEmpty(activePersonaSettings.WebhookUrl) && !string.IsNullOrEmpty(activePersonaSettings.WebhookBody))
+                        {
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    var webhookBody = activePersonaSettings.WebhookBody ?? "";
+                                    webhookBody = webhookBody.Replace("%text%", Serializer.JsonSerialize<string>(finalResponseText, false).Replace("\"", ""));
+                                    MyLog.LogWrite($"Webhook送信準備: URL={activePersonaSettings.WebhookUrl} Body={webhookBody}");
+
+                                    using var httpClient = new HttpClient();
+                                    var content = new StringContent(webhookBody, System.Text.Encoding.UTF8, "application/json");
+                                    var responseWebhook = await httpClient.PostAsync(activePersonaSettings.WebhookUrl, content);
+                                    MyLog.LogWrite($"Webhook送信完了: ステータスコード {responseWebhook.StatusCode}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    MyLog.LogWrite($"Webhook送信エラー: {ex.Message} {ex.StackTrace}");
+                                }
+                            });
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
-                    MyLog.LogWrite($"生成中にエラーが発生しました: {ex.Message} {ex.StackTrace}");
-                    AllContentLogger("[result]", response?.Messages.LastOrDefault()?.Contents ?? []);
-                    string addition = "不明な通信異常";
+                    MyLog.LogWrite($"LLM生成処理中に予期せぬエラーが発生しました: {ex.Message} {ex.StackTrace}");
 
-                    // ステータスコードに応じた追加メッセージ
-                    var statusCodeEx = httpHandler.lastStatusCode;
-                    
-                    switch (statusCodeEx)
-                    {
-                        case 0:
-                            addition = "ネットワークに接続できません。エンドポイントURLやネットワーク環境をご確認ください。";
-                            break;
-                        case 400:
-                            addition = "リクエストが不正です。入力値の不足・形式の誤り、またはCORSの問題が考えられます。";
-                            break;
-                        case 401:
-                            addition = "認証に失敗しました。APIキーが無効か期限切れの可能性があります。";
-                            break;
-                        case 402:
-                            addition = "クレジット残高不足です。クレジットを追加して再試行してください。";
-                            break;
-                        case 403:
-                            addition = "利用が許可されていない、URLが間違っている、あるいは、入力が有害と判断され拒否されました。内容を見直してください。";
-                            break;
-                        case 404:
-                            addition = "モデルが見つかりません。モデル名が正しいか確認してください。";
-                            break;
-                        case 408:
-                            addition = "タイムアウトしました。再試行するか、Base URLやネットワーク環境をご確認ください。";
-                            break;
-                        case 429:
-                            addition = "リクエストが多すぎます。しばらく待ってから再試行してください。";
-                            break;
-                        case 500:
-                            addition = "サーバー内部に問題が発生しています。しばらく待ってから再試行してください。";
-                            break;
-                        case 502:
-                            addition = "通信に失敗しました。接続先が合っている場合、選択したモデルがダウンしているか、不正な応答を返しました。モデル変更や再試行を検討してください。";
-                            break;
-                        case 503:
-                            addition = "要求を満たすプロバイダが見つかりません。ルーティング条件やモデル設定を見直してください。";
-                            break;
-                    }
-                    MyLog.LogWrite($"HTTPステータスコード: {statusCodeEx} {addition}");
-
-                    var text = $"【Chocolate LM Lite システムエラー】\n生成中にエラーが発生し、処理が中断されました。\n編集して再送信することでリトライできます。 \n理由: {statusCodeEx} {addition}";
+                    var text = $"【Chocolate LM Lite システムエラー】\n予期せぬ異常が発生し、処理が中断されました。\n編集して再送信することでリトライできます。";
                     AppendTalkEntry(TalkRole.ChocolateLM, text, ex.Message);
 
                     await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
                     isGenerating = false;
                     return false;
                 }
-
-                var statusCode = httpHandler.lastStatusCode;
-                MyLog.LogWrite($"HTTPステータスコード: {statusCode}");
-                MyLog.LogWrite($"[生成完了] {response?.Text}");
-                AllContentLogger("[result]", response?.Messages.LastOrDefault()?.Contents ?? []);
-                var usc = response?.Usage;
-                if (usc != null)
+                finally
                 {
-                    MyLog.LogWrite($"トークン使用量: 入力 {usc.InputTokenCount} トークン, 出力 {usc.OutputTokenCount} トークン, 合計 {usc.TotalTokenCount} トークン");
+                    isGenerating = false;
+                    MyLog.LogWrite("生成処理が終了しました。");
                 }
-
-                string finalResponseText = responseText ?? ""; // ツール呼び出しの度にresponseTextがクリアされるため、最終的なresponseTextを使用する(responseからだと全文入ってしまうため)
-                string finalReasoningText = response?.Messages.LastOrDefault()?.Contents
-                    .OfType<TextReasoningContent>()
-                    .FirstOrDefault()?.Text ?? "";
-
-                // <think></think>タグに囲まれている内容は、finalReasoningTextに格納する
-                var reasoningMatch = System.Text.RegularExpressions.Regex.Match(finalResponseText, @"<think>(.*?)<\/think>", System.Text.RegularExpressions.RegexOptions.Singleline);
-                if (reasoningMatch.Success)
-                {
-                    finalReasoningText = reasoningMatch.Groups[1].Value.Trim();
-                    // finalResponseTextからは、<think>タグを削除する
-                    finalResponseText = System.Text.RegularExpressions.Regex.Replace(finalResponseText, @"<think>.*?<\/think>", "", System.Text.RegularExpressions.RegexOptions.Singleline).Trim();
-                }
-
-                AppendTalkEntry(TalkRole.Assistant, finalResponseText, finalReasoningText);
-
-                await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
-
-                // 生成完了Webhook
-                if (fileManager.generalSettings.EnableWebhook)
-                {
-                    if (!string.IsNullOrEmpty(activePersonaSettings.WebhookUrl) && !string.IsNullOrEmpty(activePersonaSettings.WebhookBody))
-                    {
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                var webhookBody = activePersonaSettings.WebhookBody ?? "";
-                                webhookBody = webhookBody.Replace("%text%", Serializer.JsonSerialize<string>(finalResponseText, false).Replace("\"", ""));
-                                MyLog.LogWrite($"Webhook送信準備: URL={activePersonaSettings.WebhookUrl} Body={webhookBody}");
-
-                                using var httpClient = new HttpClient();
-                                var content = new StringContent(webhookBody, System.Text.Encoding.UTF8, "application/json");
-                                var responseWebhook = await httpClient.PostAsync(activePersonaSettings.WebhookUrl, content);
-                                MyLog.LogWrite($"Webhook送信完了: ステータスコード {responseWebhook.StatusCode}");
-                            }
-                            catch (Exception ex)
-                            {
-                                MyLog.LogWrite($"Webhook送信エラー: {ex.Message} {ex.StackTrace}");
-                            }
-                        });
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MyLog.LogWrite($"LLM生成処理中に予期せぬエラーが発生しました: {ex.Message} {ex.StackTrace}");
-
-                var text = $"【Chocolate LM Lite システムエラー】\n予期せぬ異常が発生し、処理が中断されました。\n編集して再送信することでリトライできます。";
-                AppendTalkEntry(TalkRole.ChocolateLM, text, ex.Message);
-
-                await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
-                isGenerating = false;
-                return false;
-            }
-            finally
-            {
-                isGenerating = false;
-                MyLog.LogWrite("生成処理が終了しました。");
             }
             return true;
         }
