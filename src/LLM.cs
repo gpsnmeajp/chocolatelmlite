@@ -80,7 +80,16 @@ namespace CllDotnet
 
         public void CancelGeneration()
         {
-            cancellationTokenSource.Cancel();
+            if (cancellationTokenSource != null)
+            {
+                try
+                {
+                    cancellationTokenSource.Cancel();
+                }catch (ObjectDisposedException)
+                {
+                    // すでにDisposeされている場合は無視
+                }
+            }
             MyLog.LogWrite("LLM生成のキャンセルを要求しました。");
         }
 
@@ -93,7 +102,6 @@ namespace CllDotnet
         {
             using (cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new CancellationTokenSource().Token, Program.cts.Token))
             {
-
                 isGenerating = true;
                 tools.isImageGenerated = false; // 連続作成制限を解除
 

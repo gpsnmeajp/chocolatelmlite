@@ -591,13 +591,13 @@ namespace CllDotnet
             string personaDir = GetPersonaDirectoryById(activeId.Value);
             string memoryFilePath = Path.Combine(personaDir, memoryFilename);
             string lockFilePath = memoryFilePath + ".lock";
+            bool lockAcquired = false;
 
             for (int i = 0; i < 3; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-
                     // ロックファイルが存在する場合は待機
                     if (File.Exists(lockFilePath))
                     {
@@ -617,6 +617,7 @@ namespace CllDotnet
                         {
                             // Funcを実行
                             MyLog.LogWrite("メモリロックを取得しました");
+                            lockAcquired = true;
                             return await func();
                         }
                         finally
@@ -633,7 +634,7 @@ namespace CllDotnet
                 }finally
                 {
                     // ロックファイルが存在する場合は削除
-                    if (File.Exists(lockFilePath))
+                    if (File.Exists(lockFilePath) && lockAcquired)
                     {
                         File.Delete(lockFilePath);
                         MyLog.LogWrite("メモリロックファイルを削除しました");
@@ -986,6 +987,7 @@ namespace CllDotnet
             string personaDir = GetPersonaDirectoryById(activeId.Value);
             string talkFilePath = Path.Combine(personaDir, talkJsonlFilename);
             string lockFilePath = talkFilePath + ".lock";
+            bool lockAcquired = false;
 
             for (int i = 0; i < 3; i++)
             {
@@ -1011,6 +1013,7 @@ namespace CllDotnet
                         {
                             // Funcを実行
                             MyLog.LogWrite("会話履歴ロックを取得しました");
+                            lockAcquired = true;
                             return await func();
                         }
                         finally
@@ -1027,7 +1030,7 @@ namespace CllDotnet
                 }finally
                 {
                     // ロックファイルが存在する場合は削除
-                    if (File.Exists(lockFilePath))
+                    if (File.Exists(lockFilePath) && lockAcquired)
                     {
                         File.Delete(lockFilePath);
                         MyLog.LogWrite("会話履歴ロックファイルを削除しました");

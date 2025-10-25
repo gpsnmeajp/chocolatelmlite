@@ -54,6 +54,10 @@ namespace CllDotnet
                 {
                     debugDict["LlmApiKey"] = "************"; // APIキーはデバッグ出力しない
                 }
+                if (debugDict?.ContainsKey("ImageGenerationApiKey") == true)
+                {
+                    debugDict["ImageGenerationApiKey"] = "************"; // APIキーはデバッグ出力しない
+                }
                 var ret = Serializer.JsonSerialize(debugDict, false);
                 // 200文字以上なら切り詰めて表示
                 MyLog.LogWrite($"[{from}] {(ret.Length > 200 ? ret[..200] + "..." : ret)}");
