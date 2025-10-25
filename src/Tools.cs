@@ -49,7 +49,7 @@ namespace CllDotnet
 
         // 利用可能なツールの一覧を取得するメソッド
         // 全体設定に応じて、利用可能なツールを制御・限定する処理を兼ねている
-        public IList<AITool> GetAvailableTools()
+        public async Task<IList<AITool>> GetAvailableTools()
         {
             List<AITool> tools = new List<AITool>();
             var generalSettings = _fileManager.generalSettings;
@@ -86,7 +86,7 @@ namespace CllDotnet
                 foreach (var client in _mcpClients)
                 {
                     // MCPクライアントから利用可能なツールを取得して追加
-                    var mcpTools = client.ListToolsAsync().Result;
+                    var mcpTools = await client.ListToolsAsync();
                     foreach (var tool in mcpTools)
                     {
                         tools.Add(tool);

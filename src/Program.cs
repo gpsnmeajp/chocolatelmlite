@@ -28,9 +28,9 @@ namespace CllDotnet
 
             while (!exit)
             {
+                Thread.Sleep(1000);
                 Start();
                 GC.Collect();
-                Thread.Sleep(3000);
             }
         }
 

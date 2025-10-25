@@ -210,7 +210,7 @@ namespace CllDotnet
                     using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
                     MyLog.LogWrite($"タイムアウト設定: {fileManager.generalSettings.TimeoutSeconds}秒");
-                    MyLog.LogWrite($"ツール: [{string.Join(", ", tools.GetAvailableTools().Select(t => t.Name))}]");
+                    MyLog.LogWrite($"ツール: [{string.Join(", ", (await tools.GetAvailableTools()).Select(t => t.Name))}]");
                     MyLog.LogWrite($"Temperature: {fileManager.generalSettings.Temperature}");
                     MyLog.LogWrite($"MaxOutputTokens: {fileManager.generalSettings.MaxTokens}");
 
@@ -220,7 +220,7 @@ namespace CllDotnet
                         {
                             Temperature = (float)fileManager.generalSettings.Temperature,
                             ToolMode = ChatToolMode.Auto,
-                            Tools = tools.GetAvailableTools(),
+                            Tools = await tools.GetAvailableTools(),
                             MaxOutputTokens = fileManager.generalSettings.MaxTokens
                         }, linkedCts.Token))
                     {

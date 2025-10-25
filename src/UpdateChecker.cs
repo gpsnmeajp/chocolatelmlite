@@ -20,7 +20,7 @@ namespace CllDotnet
         public static void ScheduleRegularUpdates(ConsoleMonitor consoleMonitor, CancellationToken cts)
         {
             // 起動時および24時間ごとにアップデートをチェックするタスク
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 while (!cts.IsCancellationRequested)
                 {
@@ -33,11 +33,7 @@ namespace CllDotnet
                         MyLog.LogWrite($"アップデートチェック中にエラーが発生: {ex.Message} {ex.StackTrace}");
                     }
                     // 24時間待機
-                    for (int i = 0; i < 24 * 60 * 60; i++)
-                    {
-                        if (cts.IsCancellationRequested) break;
-                        Thread.Sleep(1000);
-                    }
+                    await Task.Delay(TimeSpan.FromHours(24), cts);
                 }
             }, cts);
         }

@@ -627,7 +627,7 @@ namespace CllDotnet
                 return LoadYamlOrCreateNew<YamlPersona>(settingsPath);
             }
             MyLog.LogWrite("アクティブなペルソナがありません。空の設定を返します。");
-            throw new InvalidOperationException("アクティブなペルソナがありません。空の設定を返します。");
+            return new YamlPersona();
         }
 
         // アクティブなペルソナの設定ファイルを保存する

@@ -11,7 +11,7 @@ namespace CllDotnet
         public static void ScheduleDailyBackup(ConsoleMonitor consoleMonitor, CancellationToken cts)
         {
             // 起動時および24時間ごとにバックアップを作成するタスク
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 while (!cts.IsCancellationRequested)
                 {
@@ -24,11 +24,7 @@ namespace CllDotnet
                         MyLog.LogWrite($"バックアップ作成中にエラーが発生: {ex.Message} {ex.StackTrace}");
                     }
                     // 24時間待機
-                    for (int i = 0; i < 24 * 60 * 60; i++)
-                    {
-                        if (cts.IsCancellationRequested) break;
-                        Thread.Sleep(1000);
-                    }
+                    await Task.Delay(TimeSpan.FromHours(24), cts);
                 }
             }, cts);
         }

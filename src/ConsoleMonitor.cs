@@ -22,12 +22,12 @@ namespace CllDotnet
         {
             this.enable = enable;
             MyLog.LogWrite($"コンソールモニター: {(enable ? "有効" : "無効")}");
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     Render();
-                    Thread.Sleep(500);
+                    await Task.Delay(500, cancellationToken);
                 }
             }, cancellationToken);
         }
