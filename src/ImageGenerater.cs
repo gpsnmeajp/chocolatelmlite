@@ -140,7 +140,7 @@ namespace CllDotnet
                 return (ret, null);
             }
 
-            // レスポンスの処理
+            // レスポンスの処理(OpenRouter画像生成仕様に基づく)
             var responseContent = await httpResponse.Content.ReadAsStringAsync();
 
             if (settings.DebugMode)

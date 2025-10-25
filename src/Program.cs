@@ -75,8 +75,7 @@ namespace CllDotnet
                             anotherInstanceRunning = true;
                         }
                         // ロックを獲得できた場合はそのまま保持し、終了時に解放されるようにする
-                        mutex?.WaitOne(0, false);
-                        hasMutex = true;
+                        hasMutex = mutex?.WaitOne(0, false) ?? false;
                     }
                     catch (UnauthorizedAccessException)
                     {
