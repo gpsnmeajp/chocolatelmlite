@@ -587,38 +587,52 @@ namespace CllDotnet
             string memoryFilePath = Path.Combine(personaDir, memoryFilename);
             string lockFilePath = memoryFilePath + ".lock";
 
-            // ロックファイルが存在する場合は待機
-            if (File.Exists(lockFilePath))
+            for (int i = 0; i < 3; i++)
             {
-                MyLog.LogWrite("メモリロックの取得を待機中...");
-                while (File.Exists(lockFilePath))
-                {
-                    await Task.Delay(100, cancellationToken);
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-                MyLog.LogWrite("メモリロックの取得待機終了");
-            }
-
-            // ロックファイルを作成してロックを取得
-            using (var lockFile = new FileStream(lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
-            {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    // Funcを実行
-                    MyLog.LogWrite("メモリロックを取得しました");
-                    return await func();
-                }
-                finally
-                {
-                    // ロックファイルを閉じて削除
-                    lockFile.Close();
+
+                    // ロックファイルが存在する場合は待機
                     if (File.Exists(lockFilePath))
                     {
-                        File.Delete(lockFilePath);
+                        MyLog.LogWrite("メモリロックの取得を待機中...");
+                        while (File.Exists(lockFilePath))
+                        {
+                            await Task.Delay(100, cancellationToken);
+                            cancellationToken.ThrowIfCancellationRequested();
+                        }
+                        MyLog.LogWrite("メモリロックの取得待機終了");
                     }
-                    MyLog.LogWrite("メモリロックを解放しました");
+
+                    // ロックファイルを作成してロックを取得
+                    using (var lockFile = new FileStream(lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
+                    {
+                        try
+                        {
+                            // Funcを実行
+                            MyLog.LogWrite("メモリロックを取得しました");
+                            return await func();
+                        }
+                        finally
+                        {
+                            // ロックファイルを閉じて削除
+                            lockFile.Close();
+                            if (File.Exists(lockFilePath))
+                            {
+                                File.Delete(lockFilePath);
+                            }
+                            MyLog.LogWrite("メモリロックを解放しました");
+                        }
+                    }
+                }
+                catch (IOException ex)
+                {
+                    MyLog.LogWrite($"メモリロックの取得に失敗しました: {ex.Message} {ex.StackTrace} 再試行します...");
+                    await Task.Delay(100, cancellationToken);
                 }
             }
+            throw new InvalidOperationException("メモリロックの取得に連続で失敗しました。");
         }
 
         // アクティブペルソナの設定ファイルを読み込む
@@ -668,7 +682,7 @@ namespace CllDotnet
             if (!File.Exists(systemPromptPath))
             {
                 MyLog.LogWrite("アクティブなペルソナのシステムプロンプトが存在しません。");
-                throw new FileNotFoundException("アクティブなペルソナのシステムプロンプトが存在しません。", systemPromptPath);
+                return "";
             }
             MyLog.LogWrite($"アクティブなペルソナのシステムプロンプトを取得: {systemPromptPath}");
             return File.ReadAllText(systemPromptPath);
@@ -720,7 +734,7 @@ namespace CllDotnet
             else
             {
                 MyLog.LogWrite("アクティブなペルソナの添付フォルダが存在しません。");
-                throw new InvalidOperationException("アクティブなペルソナの添付フォルダが存在しません。");
+                return new List<int>();
             }
             return attachmentIds;
         }
@@ -965,38 +979,51 @@ namespace CllDotnet
             string talkFilePath = Path.Combine(personaDir, talkJsonlFilename);
             string lockFilePath = talkFilePath + ".lock";
 
-            // ロックファイルが存在する場合は待機
-            if (File.Exists(lockFilePath))
+            for (int i = 0; i < 3; i++)
             {
-                MyLog.LogWrite("会話履歴ロックの取得を待機中...");
-                while (File.Exists(lockFilePath))
-                {
-                    await Task.Delay(100, cancellationToken);
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-                MyLog.LogWrite("会話履歴ロックの取得待機終了");
-            }
-
-            // ロックファイルを作成してロックを取得
-            using (var lockFile = new FileStream(lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
-            {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    // Funcを実行
-                    MyLog.LogWrite("会話履歴ロックを取得しました");
-                    return await func();
-                }
-                finally
-                {
-                    // ロックファイルを閉じて削除
-                    lockFile.Close();
+                    // ロックファイルが存在する場合は待機
                     if (File.Exists(lockFilePath))
                     {
-                        File.Delete(lockFilePath);
+                        MyLog.LogWrite("会話履歴ロックの取得を待機中...");
+                        while (File.Exists(lockFilePath))
+                        {
+                            await Task.Delay(100, cancellationToken);
+                            cancellationToken.ThrowIfCancellationRequested();
+                        }
+                        MyLog.LogWrite("会話履歴ロックの取得待機終了");
                     }
-                    MyLog.LogWrite("会話履歴ロックを解放しました");
+
+                    // ロックファイルを作成してロックを取得
+                    using (var lockFile = new FileStream(lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
+                    {
+                        try
+                        {
+                            // Funcを実行
+                            MyLog.LogWrite("会話履歴ロックを取得しました");
+                            return await func();
+                        }
+                        finally
+                        {
+                            // ロックファイルを閉じて削除
+                            lockFile.Close();
+                            if (File.Exists(lockFilePath))
+                            {
+                                File.Delete(lockFilePath);
+                            }
+                            MyLog.LogWrite("会話履歴ロックを解放しました");
+                        }
+                    }
+                }
+                catch (IOException ex)
+                {
+                    MyLog.LogWrite($"会話履歴ロックの取得に失敗しました: {ex.Message} {ex.StackTrace} 再試行します...");
+                    await Task.Delay(100, cancellationToken);
                 }
             }
+            throw new InvalidOperationException("会話履歴ロックの取得に連続で失敗しました。");
         }
 
         // アクティブなペルソナの会話履歴を全件取得する。存在しなければ空リストを返す。

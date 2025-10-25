@@ -165,8 +165,8 @@ namespace CllDotnet
                 MyLog.LogWrite($"システムプロンプト: {systemprompt.Length}文字");
 
                 var talks = fileManager.GetAllTalkHistoryAllFromActivePersonaCached();
-                var photocutoffMesaages = PhotoCutoff(talks);
                 var messages = Tokens.TrimTalkTokens(systemprompt, talks, fileManager.generalSettings.TalkHistoryCutoffThreshold);
+                messages = PhotoCutoff(new List<TalkEntry>(messages));
                 if (messages.Count == 0)
                 {
                     var stat = fileManager.GetTalkStatsFromActivePersona();

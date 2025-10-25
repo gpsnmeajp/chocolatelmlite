@@ -49,11 +49,6 @@ namespace CllDotnet
             {
                 int entryTokens = CountTokens(entry.Text +
                     (string.IsNullOrEmpty(entry.ToolDetail) ? "" : $"\n\n{entry.ToolDetail}"));
-                if (entry.AttachmentId != null)
-                {
-                    entryTokens += entry.AttachmentId.Count * 1024;
-                }
-
                 if ((totalTokens + entryTokens) > maxTokens)
                 {
                     break;
