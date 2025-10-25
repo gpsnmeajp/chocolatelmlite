@@ -37,36 +37,36 @@ namespace CllDotnet
             _fileManager = fileManager;
             _consoleMonitor = consoleMonitor;
             _imageGenerater = imageGenerater;
+        }
 
+        public async Task InitToolsAsync()
+        {
             // MCPツールの有効化設定がされている場合に初期化を開始
             if (_fileManager.generalSettings.EnableMcpTools)
             {
                 // MCPツールの初期化を非同期で実行
-                Task.Run(async () =>
+                try
                 {
-                    try
-                    {
-                        await InitMcpToolsAsync();
+                    await InitMcpToolsAsync();
 
-                        // MCPツールを追加
-                        foreach (var client in _mcpClients)
+                    // MCPツールを追加
+                    foreach (var client in _mcpClients)
+                    {
+                        // MCPクライアントから利用可能なツールを取得して追加
+                        var mcpTools = await client.ListToolsAsync();
+                        foreach (var tool in mcpTools)
                         {
-                            // MCPクライアントから利用可能なツールを取得して追加
-                            var mcpTools = await client.ListToolsAsync();
-                            foreach (var tool in mcpTools)
+                            lock (_mcpTools)
                             {
-                                lock (_mcpTools)
-                                {
-                                    _mcpTools.Add(tool);
-                                }
+                                _mcpTools.Add(tool);
                             }
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        MyLog.LogWrite($"MCPツールの初期化に失敗しました: {ex.Message} {ex.StackTrace}");
-                    }
-                }).Wait();
+                }
+                catch (Exception ex)
+                {
+                    MyLog.LogWrite($"MCPツールの初期化に失敗しました: {ex.Message} {ex.StackTrace}");
+                }
             }
         }
 

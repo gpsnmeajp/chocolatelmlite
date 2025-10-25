@@ -111,6 +111,7 @@ namespace CllDotnet
                 // ツールの初期化
                 MyLog.LogWrite("ツールの初期化");
                 await using Tools tools = new Tools(imageGenerater, fileManager, consoleMonitor);
+                await tools.InitToolsAsync();
 
                 // LLMの初期化
                 MyLog.LogWrite("LLMの初期化");
