@@ -45,7 +45,7 @@ namespace CllDotnet
                     additionalInfo += $"\n\n<conversations_statistics total='{stats.Total}' archived='{stats.Archived}' user_messages_last_8h='{stats.UserLast8h}' total_tokens='{stats.TotalTokens}'";
                     if (stats.NeedUserRestRemind)
                     {
-                        additionalInfo += $"need_rest_reminder='{stats.NeedUserRestRemind}'";
+                        additionalInfo += $" need_rest_reminder='{stats.NeedUserRestRemind}'";
                     }
                     additionalInfo += $"/>";
                 }

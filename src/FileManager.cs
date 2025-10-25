@@ -623,11 +623,6 @@ namespace CllDotnet
                         {
                             // ロックファイルを閉じて削除
                             lockFile.Close();
-                            if (File.Exists(lockFilePath))
-                            {
-                                File.Delete(lockFilePath);
-                            }
-                            MyLog.LogWrite("メモリロックを解放しました");
                         }
                     }
                 }
@@ -635,6 +630,14 @@ namespace CllDotnet
                 {
                     MyLog.LogWrite($"メモリロックの取得に失敗しました: {ex.Message} {ex.StackTrace} 再試行します...");
                     await Task.Delay(100, cancellationToken);
+                }finally
+                {
+                    // ロックファイルが存在する場合は削除
+                    if (File.Exists(lockFilePath))
+                    {
+                        File.Delete(lockFilePath);
+                        MyLog.LogWrite("メモリロックファイルを削除しました");
+                    }
                 }
             }
             throw new InvalidOperationException("メモリロックの取得に連続で失敗しました。");
@@ -958,7 +961,7 @@ namespace CllDotnet
             if (!Directory.Exists(projectDir))
             {
                 MyLog.LogWrite("アクティブなペルソナのプロジェクトフォルダが存在しません。");
-                throw new InvalidOperationException("アクティブなペルソナのプロジェクトフォルダが存在しません。");
+                return fileList;
             }
 
             var files = Directory.GetFiles(projectDir);
@@ -1014,11 +1017,6 @@ namespace CllDotnet
                         {
                             // ロックファイルを閉じて削除
                             lockFile.Close();
-                            if (File.Exists(lockFilePath))
-                            {
-                                File.Delete(lockFilePath);
-                            }
-                            MyLog.LogWrite("会話履歴ロックを解放しました");
                         }
                     }
                 }
@@ -1026,6 +1024,14 @@ namespace CllDotnet
                 {
                     MyLog.LogWrite($"会話履歴ロックの取得に失敗しました: {ex.Message} {ex.StackTrace} 再試行します...");
                     await Task.Delay(100, cancellationToken);
+                }finally
+                {
+                    // ロックファイルが存在する場合は削除
+                    if (File.Exists(lockFilePath))
+                    {
+                        File.Delete(lockFilePath);
+                        MyLog.LogWrite("会話履歴ロックファイルを削除しました");
+                    }
                 }
             }
             throw new InvalidOperationException("会話履歴ロックの取得に連続で失敗しました。");

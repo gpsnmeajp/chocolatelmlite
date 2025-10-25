@@ -531,6 +531,8 @@ namespace CllDotnet
         // ツール呼び出しの実装
         private async ValueTask<object?> MyFunctionInvoker(FunctionInvocationContext context, CancellationToken cancellationToken)
         {
+            // ロック獲得済みのLLM生成処理から呼ばれることを想定しているため、ここでの排他制御は不要
+
             var argJson = Serializer.JsonSerialize(new Dictionary<string, object?> { { "call", context.Arguments } }, false);
             MyLog.LogWrite($"関数呼び出し: {context.Function.Name}({argJson}) を実行中...");
 
@@ -644,6 +646,7 @@ namespace CllDotnet
 
         public void AppendTalkEntry(TalkRole role, string finalResponseText, string finalReasoningText)
         {
+            // ロック獲得済みのLLM生成処理から呼ばれることを想定しているため、ここでの排他制御は不要
             var entry = new TalkEntry
             {
                 Uuid = Guid.Empty,
