@@ -33,6 +33,9 @@ namespace CllDotnet
             request.Headers.Add("X-Title", "Chocolate LM Lite");
             request.Headers.Add("HTTP-Referer", "https://github.com/gpsnmeajp/chocolatelmlite");
 
+            // ステータスコードを初期化
+            lastStatusCode = 0;
+
             // 実際のHTTPリクエストを実行
             var response = await base.SendAsync(request, cancellationToken);
 

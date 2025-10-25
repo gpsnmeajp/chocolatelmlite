@@ -191,6 +191,7 @@ namespace CllDotnet
                             }
                             else
                             {
+                                // 通常こちらに来ることはない
                                 MyLog.LogWrite($"画像生成に成功しました。URL: {imageUrl}");
                                 var ret = $"画像生成LLMからの応答内容: {textResponse} : {imageUrl}";
                                 MyLog.LogWrite(ret);
