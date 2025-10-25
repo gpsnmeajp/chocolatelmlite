@@ -74,6 +74,7 @@ namespace CllDotnet
         // 全体設定に応じて、利用可能なツールを制御・限定する処理を兼ねている
         public async Task<IList<AITool>> GetAvailableTools()
         {
+            await Task.Delay(0);
             List<AITool> tools = new List<AITool>();
             var generalSettings = _fileManager.generalSettings;
 

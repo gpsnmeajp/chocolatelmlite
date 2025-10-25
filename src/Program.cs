@@ -23,7 +23,7 @@ namespace CllDotnet
         static Mutex? mutex;
         static void Main()
         {
-            MyLog.LogWrite("Chocolate LM Lite 🍫 サーバーコンソール");
+            MyLog.LogWrite("Chocolate LM Lite サーバーコンソール");
             MyLog.LogWrite("準備中...");
             Console.CancelKeyPress += Canceler;
 

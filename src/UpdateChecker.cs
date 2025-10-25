@@ -59,7 +59,7 @@ namespace CllDotnet
                         string latestVersion = verElement.GetString() ?? CurrentVersion;
                         if (latestVersion != CurrentVersion)
                         {
-                            consoleMonitor.UpdateInfo("アップデート情報", $"ℹ️ 新しいバージョンが利用可能です: {latestVersion} (現在のバージョン: {CurrentVersion})");
+                            consoleMonitor.UpdateInfo("アップデート情報", $"新しいバージョンが利用可能です: {latestVersion} (現在のバージョン: {CurrentVersion})");
                             MyLog.LogWrite($"新しいバージョンが利用可能です: {latestVersion} (現在のバージョン: {CurrentVersion})");
                         }
                         else
