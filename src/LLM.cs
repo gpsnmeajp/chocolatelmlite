@@ -625,8 +625,17 @@ namespace CllDotnet
                     // メッセージインデックスがcutoffMessageIndexより古い場合、添付ファイルを削除する
                     if (i < talks.Count - cutoffMessageIndex)
                     {
-                        // 添付ファイルを削除
-                        talk.AttachmentId = null;
+                        // 添付ファイルを削除(元を書き換えないように新しいTalkEntryを作成する)
+                        talks[i] = new TalkEntry
+                        {
+                            Uuid = talk.Uuid,
+                            Role = talk.Role,
+                            Text = talk.Text,
+                            Reasoning = talk.Reasoning,
+                            ToolDetail = talk.ToolDetail,
+                            AttachmentId = null,
+                            Timestamp = talk.Timestamp
+                        };
                     }
                 }
             }
