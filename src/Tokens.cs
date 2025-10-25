@@ -8,7 +8,7 @@ namespace CllDotnet
 {
     public static class Tokens
     {
-        static Encoder encoder = ModelToEncoder.For("gpt-4o");
+        static Encoder encoder = ModelToEncoder.For("gpt-4o"); // 代表としてGPT-4oのエンコーダを使用(固定)
         public static int CountTokens(string input)
         {
             return encoder.CountTokens(input);
@@ -52,6 +52,7 @@ namespace CllDotnet
                 {
                     break;
                 }
+                // 添付ファイルのトークン計算は削除。ここでは考慮しない。
 
                 result.Add(entry);
                 totalTokens += entryTokens;
