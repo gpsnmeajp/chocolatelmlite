@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ namespace CllDotnet
 {
     public class ConsoleMonitor
     {
-        Dictionary<string, string> infoLines = new Dictionary<string, string>();
+        ConcurrentDictionary<string, string> infoLines = new ConcurrentDictionary<string, string>();
         bool enable = true;
         FileManager fileManager;
 

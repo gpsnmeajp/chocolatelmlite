@@ -176,7 +176,7 @@ namespace CllDotnet
                 return Serializer.JsonSerialize(
                     new Dictionary<string, string>
                     {
-                        { "result", engine.Evaluate(code).ToString() },
+                        { "result", ret },
                         { "console", consolelog }
                     }
                 );

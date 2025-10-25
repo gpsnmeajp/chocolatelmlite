@@ -19,10 +19,12 @@ namespace CllDotnet
     {
         static bool exit = false;
         public static CancellationTokenSource cts = new CancellationTokenSource();
+        static Action? cancelHandler;
         static void Main()
         {
             MyLog.LogWrite("Chocolate LM Lite 🍫 サーバーコンソール");
             MyLog.LogWrite("準備中...");
+            Console.CancelKeyPress += Canceler;
 
             while (!exit)
             {
@@ -30,6 +32,11 @@ namespace CllDotnet
                 GC.Collect();
                 Thread.Sleep(3000);
             }
+        }
+
+        private static void Canceler(object? sender, ConsoleCancelEventArgs e)
+        {
+            cancelHandler?.Invoke();
         }
 
         public static void Stop()
@@ -151,7 +158,7 @@ namespace CllDotnet
                     });
                 }
 
-                Console.CancelKeyPress += (sender, e) =>
+                cancelHandler = () =>
                 {
                     if (exit) return;
                     MyLog.LogWrite("サーバーを停止しています...");

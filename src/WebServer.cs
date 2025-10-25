@@ -237,7 +237,7 @@ namespace CllDotnet
 
             app.MapPost("/api/setting", async context =>
             {
-                if(systemSettingsLocalOnly && !IsLocalhost(context))
+                if (systemSettingsLocalOnly && !IsLocalhost(context))
                 {
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     await context.Response.WriteAsync(DictionaryToJson("POST /api/setting", new Dictionary<string, object>
@@ -543,17 +543,20 @@ namespace CllDotnet
                     var socketFinishedTcs = new TaskCompletionSource<object?>(cancellationToken);
 
                     // もし16以上のソケットがある場合は古いものから切断
-                    while (WebSocketList.Count >= 16)
+                    lock (WebSocketList)
                     {
-                        Program.cts.Token.ThrowIfCancellationRequested();
+                        while (WebSocketList.Count >= 16)
+                        {
+                            Program.cts.Token.ThrowIfCancellationRequested();
 
-                        var oldestSocket = WebSocketList.First();
-                        oldestSocket.tcs.SetResult(null);
-                        WebSocketList.Remove(oldestSocket);
+                            var oldestSocket = WebSocketList.First();
+                            oldestSocket.tcs.SetResult(null);
+                            WebSocketList.Remove(oldestSocket);
+                        }
+
+                        // 新しいソケットをリストに追加
+                        WebSocketList.Add((webSocket, socketFinishedTcs));
                     }
-
-                    // 新しいソケットをリストに追加
-                    WebSocketList.Add((webSocket, socketFinishedTcs));
 
                     // ソケットが閉じられるまで待機(ソケットごとにTaskで管理されるためここでawaitしても他のソケットには影響しない)
                     await socketFinishedTcs.Task;
@@ -598,21 +601,24 @@ namespace CllDotnet
             Task.Run(async () =>
             {
                 // 全てのWebSocket接続を閉じる
-                foreach (var wsTuple in WebSocketList)
+                lock (WebSocketList)
                 {
-                    var webSocket = wsTuple.Item1;
-                    try
+                    foreach (var wsTuple in WebSocketList)
                     {
-                        _ = webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server is stopping", CancellationToken.None);
-                    }
-                    catch
-                    {
-                        // クローズに失敗しても無視
-                    }
+                        var webSocket = wsTuple.Item1;
+                        try
+                        {
+                            _ = webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server is stopping", CancellationToken.None);
+                        }
+                        catch
+                        {
+                            // クローズに失敗しても無視
+                        }
 
-                    var tcs = wsTuple.Item2;
-                    // サーバーの待機タスクを完了させる
-                    tcs.SetResult(null);
+                        var tcs = wsTuple.Item2;
+                        // サーバーの待機タスクを完了させる
+                        tcs.SetResult(null);
+                    }
                 }
 
                 await app!.StopAsync();
@@ -628,7 +634,12 @@ namespace CllDotnet
             var message = Serializer.JsonSerialize(dict, false);
 
             // ソケットを走査
-            foreach (var wsTuple in WebSocketList)
+            List<(WebSocket socket, TaskCompletionSource<object?> tcs)> webSocketListCopy;
+            lock (WebSocketList)
+            {
+                webSocketListCopy = new List<(WebSocket socket, TaskCompletionSource<object?> tcs)>(WebSocketList);
+            }
+            foreach (var wsTuple in webSocketListCopy)
             {
                 Program.cts.Token.ThrowIfCancellationRequested();
                 var webSocket = wsTuple.socket;
@@ -655,13 +666,17 @@ namespace CllDotnet
             }
 
             // クローズされたソケットをリストから削除
+
             foreach (var closedWs in closedSockets)
             {
                 var tcs = closedWs.Item2;
                 // サーバーの待機タスクを完了させる
                 tcs.SetResult(null);
                 // リストから削除
-                WebSocketList.Remove(closedWs);
+                lock (WebSocketList)
+                {
+                    WebSocketList.Remove(closedWs);
+                }
             }
         }
     }
