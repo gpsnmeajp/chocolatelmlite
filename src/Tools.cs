@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CllDotnet
 {
-    public class Tools
+    public class Tools : IAsyncDisposable
     {
         private readonly FileManager _fileManager;
         private readonly ConsoleMonitor _consoleMonitor;
@@ -23,6 +23,14 @@ namespace CllDotnet
         public int? lastAttachmentId = null;
         public bool isImageGenerated = false; // 連続作成制限
         List<AITool> _mcpTools = new List<AITool>();
+
+        public async ValueTask DisposeAsync()
+        {
+            foreach (var client in _mcpClients)
+            {
+                await client.DisposeAsync();
+            }
+        }
 
         public Tools(ImageGenerater imageGenerater, FileManager fileManager, ConsoleMonitor consoleMonitor)
         {
@@ -47,7 +55,10 @@ namespace CllDotnet
                             var mcpTools = await client.ListToolsAsync();
                             foreach (var tool in mcpTools)
                             {
-                                _mcpTools.Add(tool);
+                                lock (_mcpTools)
+                                {
+                                    _mcpTools.Add(tool);
+                                }
                             }
                         }
                     }
@@ -55,7 +66,7 @@ namespace CllDotnet
                     {
                         MyLog.LogWrite($"MCPツールの初期化に失敗しました: {ex.Message} {ex.StackTrace}");
                     }
-                });
+                }).Wait();
             }
         }
 
@@ -94,7 +105,10 @@ namespace CllDotnet
 
             if (generalSettings.EnableMcpTools)
             {
-                tools.AddRange(_mcpTools);
+                lock (_mcpTools)
+                {
+                    tools.AddRange(_mcpTools);
+                }
             }
 
             return tools;
@@ -144,10 +158,14 @@ namespace CllDotnet
         {
             await Task.Delay(0);
             string consolelog = "";
-            var console = new 
+            var console = new
             {
                 log = new Action<object>(msg =>
                 {
+                    if (msg == null)
+                    {
+                        msg = "null";
+                    }
                     MyLog.LogWrite($"[Jint.Engine] {msg}");
                     consolelog += msg.ToString() + "\n";
                 })
@@ -170,7 +188,7 @@ namespace CllDotnet
             {
                 return ret;
             }
-            else if(string.IsNullOrEmpty(ret) || ret == "undefined" || ret == "null")
+            else if (string.IsNullOrEmpty(ret) || ret == "undefined" || ret == "null")
             {
                 return consolelog;
             }
@@ -192,8 +210,7 @@ namespace CllDotnet
             [Description("新しい内容(空:削除)")] string newContent)
         {
             MyLog.LogWrite($"メモリ更新ツール呼び出し: id={id}, newContent='{newContent}'");
-
-            if (newContent.Length > 500)
+            if (newContent != null && newContent.Length > 500)
             {
                 return "エラー: 内容が500文字を超えているため追加できませんでした。利用可能な場合は、プロジェクトへの保存を検討してください。";
             }
@@ -257,7 +274,7 @@ namespace CllDotnet
                 MyLog.LogWrite(ret);
                 throw new InvalidOperationException(ret);
             }
-            
+
             if (isImageGenerated)
             {
                 var ret = "画像は既に生成されています。1回のユーザー要求に対して2回以上連続して画像を生成することはできません。";
@@ -370,7 +387,7 @@ namespace CllDotnet
                     MyLog.LogWrite($"MCPツール: {tool.Name} ({tool.Description})");
                 }
 
-                _consoleMonitor.UpdateInfo("MCP", "読み込んだMCPツールの数: " + _mcpClients.Count);
+                _consoleMonitor.UpdateInfo("MCP", "接続したMCPサーバーの数: " + _mcpClients.Count);
             }
         }
     }

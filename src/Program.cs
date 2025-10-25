@@ -45,7 +45,7 @@ namespace CllDotnet
             cts.Cancel();
         }
 
-        static void Start()
+        static async Task Start()
         {
             try
             {
@@ -110,7 +110,7 @@ namespace CllDotnet
 
                 // ツールの初期化
                 MyLog.LogWrite("ツールの初期化");
-                Tools tools = new Tools(imageGenerater, fileManager, consoleMonitor);
+                await using Tools tools = new Tools(imageGenerater, fileManager, consoleMonitor);
 
                 // LLMの初期化
                 MyLog.LogWrite("LLMの初期化");
@@ -122,18 +122,14 @@ namespace CllDotnet
 
                 // 1分おきの定期処理の開始
                 MyLog.LogWrite("定期処理の開始");
-                Task.Run(async () =>
+                _ = Task.Run(async () =>
                 {
                     try
                     {
                         while (!cts.Token.IsCancellationRequested)
                         {
                             await persona.PerformPeriodicTasks(cancellationToken: cts.Token);
-                            for (int i = 0; i < 60; i++)
-                            {
-                                if (cts.Token.IsCancellationRequested) break;
-                                await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
-                            }
+                            await Task.Delay(TimeSpan.FromMinutes(1), cts.Token);
                         }
                     }
                     catch (OperationCanceledException)
