@@ -42,7 +42,7 @@ namespace CllDotnet
             // レスポンスをデバッグファイルに保存
             if (_fileManager.generalSettings.DebugMode)
             {
-                // ストリーミング処理が無効になるため注意
+                // ストリーミング処理が無効になるため注意 (なお、最終結果は問題なく届く)
                 MyLog.DebugFileWrite("response.json", response.Content != null ? await response.Content.ReadAsStringAsync() : "No Content");
             }
 

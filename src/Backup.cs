@@ -24,7 +24,12 @@ namespace CllDotnet
                         MyLog.LogWrite($"バックアップ作成中にエラーが発生: {ex.Message} {ex.StackTrace}");
                     }
                     // 24時間待機
-                    await Task.Delay(TimeSpan.FromHours(24), cts);
+                    try{
+                        await Task.Delay(TimeSpan.FromHours(24), cts);
+                    }catch (TaskCanceledException)
+                    {
+                        // キャンセルされた場合は無視
+                    }
                 }
             }, cts);
         }
