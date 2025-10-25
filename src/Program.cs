@@ -20,6 +20,7 @@ namespace CllDotnet
         static bool exit = false;
         public static CancellationTokenSource cts = new CancellationTokenSource();
         static Action? cancelHandler;
+        static Mutex? mutex;
         static void Main()
         {
             MyLog.LogWrite("Chocolate LM Lite 🍫 サーバーコンソール");
@@ -40,22 +41,23 @@ namespace CllDotnet
                 Start().Wait();
                 GC.Collect();
             }
+
+            mutex?.ReleaseMutex();
+            mutex?.Dispose();
         }
 
         static bool IsAnotherInstanceRunning()
         {
             try
             {
-                using (var mutex = new Mutex(false, "Global\\ChocolateLMLiteMutex", out bool createdNew))
+                mutex = new Mutex(false, "Global\\ChocolateLMLiteMutex", out bool createdNew);
+                if (!createdNew)
                 {
-                    if (!createdNew)
-                    {
-                        // 既に他のインスタンスが起動している
-                        return true;
-                    }
-                    // ロックを獲得できた場合はそのまま保持し、終了時に解放されるようにする
-                    return false;
+                    // 既に他のインスタンスが起動している
+                    return true;
                 }
+                // ロックを獲得できた場合はそのまま保持し、終了時に解放されるようにする
+                return false;
             }
             catch (UnauthorizedAccessException)
             {
