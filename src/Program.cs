@@ -26,11 +26,41 @@ namespace CllDotnet
             MyLog.LogWrite("準備中...");
             Console.CancelKeyPress += Canceler;
 
+            // 同時起動は拒否する
+            if (IsAnotherInstanceRunning())
+            {
+                MyLog.LogWrite("既にサーバーが起動中です。二重起動はできません。");
+                Thread.Sleep(3000);
+                return;
+            }
+
             while (!exit)
             {
                 Thread.Sleep(1000);
                 Start().Wait();
                 GC.Collect();
+            }
+        }
+
+        static bool IsAnotherInstanceRunning()
+        {
+            try
+            {
+                using (var mutex = new Mutex(false, "Global\\ChocolateLMLiteMutex", out bool createdNew))
+                {
+                    if (!createdNew)
+                    {
+                        // 既に他のインスタンスが起動している
+                        return true;
+                    }
+                    // ロックを獲得できた場合はそのまま保持し、終了時に解放されるようにする
+                    return false;
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // アクセス拒否された場合も、他のインスタンスが起動しているとみなす
+                return true;
             }
         }
 

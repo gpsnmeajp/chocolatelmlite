@@ -8,7 +8,7 @@ namespace CllDotnet
 {
     public static class UpdateChecker
     {
-        const string CurrentVersion = "0.01"; // 現在のバージョン
+        const string CurrentVersion = "0.01a"; // 現在のバージョン
         const string UpdateCheckUrl = "https://sabowl.sakura.ne.jp/api/chocolatelm/version.json"; // アップデート情報のURL
 
         /*
@@ -26,7 +26,7 @@ namespace CllDotnet
                 {
                     try
                     {
-                        CheckForUpdates(consoleMonitor);
+                        await CheckForUpdates(consoleMonitor);
                     }
                     catch (Exception ex)
                     {
@@ -45,31 +45,32 @@ namespace CllDotnet
             }, cts);
         }
 
-        public static void CheckForUpdates(ConsoleMonitor consoleMonitor)
+        public static async Task CheckForUpdates(ConsoleMonitor consoleMonitor)
         {
             // バージョン情報をダウンロードし、JSONを解析してバージョン番号が違うなら通知する
             MyLog.LogWrite($"アップデート情報をチェックしています... {UpdateCheckUrl}");
             using (var client = new System.Net.Http.HttpClient())
             {
-                string json = client.GetStringAsync(UpdateCheckUrl).Result;
-                var doc = JsonSerializer.Deserialize<JsonDocument>(json);
-                
-                if (doc != null && doc.RootElement.TryGetProperty("ver", out var verElement))
+                string json = await client.GetStringAsync(UpdateCheckUrl);
+                using (var doc = JsonSerializer.Deserialize<JsonDocument>(json))
                 {
-                    string latestVersion = verElement.GetString() ?? CurrentVersion;
-                    if (latestVersion != CurrentVersion)
+                    if (doc != null && doc.RootElement.TryGetProperty("ver", out var verElement))
                     {
-                        consoleMonitor.UpdateInfo("アップデート情報", $"ℹ️ 新しいバージョンが利用可能です: {latestVersion} (現在のバージョン: {CurrentVersion})");
-                        MyLog.LogWrite($"新しいバージョンが利用可能です: {latestVersion} (現在のバージョン: {CurrentVersion})");
+                        string latestVersion = verElement.GetString() ?? CurrentVersion;
+                        if (latestVersion != CurrentVersion)
+                        {
+                            consoleMonitor.UpdateInfo("アップデート情報", $"ℹ️ 新しいバージョンが利用可能です: {latestVersion} (現在のバージョン: {CurrentVersion})");
+                            MyLog.LogWrite($"新しいバージョンが利用可能です: {latestVersion} (現在のバージョン: {CurrentVersion})");
+                        }
+                        else
+                        {
+                            MyLog.LogWrite("現在のバージョンは最新です。");
+                        }
                     }
                     else
                     {
-                        MyLog.LogWrite("現在のバージョンは最新です。");
+                        MyLog.LogWrite("アップデート情報の取得に失敗しました: バージョン情報が見つかりません。");
                     }
-                }
-                else
-                {
-                    MyLog.LogWrite("アップデート情報の取得に失敗しました: バージョン情報が見つかりません。");
                 }
             }
         }
