@@ -11,9 +11,7 @@ namespace CllDotnet
         static Encoder encoder = ModelToEncoder.For("gpt-4o");
         public static int CountTokens(string input)
         {
-            var tokens = encoder.Encode(input);
-            var text = encoder.Decode(tokens);
-            return encoder.CountTokens(text);
+            return encoder.CountTokens(input);
         }
 
         // トーク履歴全体のトークン数をカウントする
@@ -22,7 +20,8 @@ namespace CllDotnet
             int totalTokens = 0;
             foreach (var entry in inputs)
             {
-                totalTokens += CountTokens(entry.Text);
+                totalTokens += CountTokens(entry.Text +
+                    (string.IsNullOrEmpty(entry.ToolDetail) ? "" : $"\n\n{entry.ToolDetail}"));
 
                 // 添付ファイル一つ辺り1024トークンと仮定(GPT-4.1)
                 if (entry.AttachmentId != null)
