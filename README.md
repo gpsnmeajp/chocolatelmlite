@@ -107,7 +107,10 @@ Mac等でも動作するかと思いますが、動作検証はしていませ�
 ### Windows
 
 ```bash
+winget install --id Git.Git -e --source winget
 winget install --id Microsoft.DotNet.SDK.8
+git clone https://github.com/gpsnmeajp/chocolatelmlite.git
+cd chocolatelmlite
 dotnet run
 ```
 
@@ -117,7 +120,23 @@ Microsoft公式サイトからSDKをダウンロードしてインストール�
 ### Ubuntu
 
 ```bash
+sudo apt-get install git
 sudo apt-get install dotnet-sdk-8.0
+git clone https://github.com/gpsnmeajp/chocolatelmlite.git
+cd chocolatelmlite
+dotnet run
+```
+
+### Android (UserLAnd)
+動作を推奨はしませんが、フラッグシップ級のAndroid端末であれば動作することを確認しています。(`Samsung Galaxy Z Fold7`で動作確認)  
+PlayストアからUserLAndをインストール後、Ubuntuをインストールしてください。
+
+```bash
+sudo apt-get install git
+sudo apt-get install dotnet-sdk-8.0
+git clone https://github.com/gpsnmeajp/chocolatelmlite.git
+cd chocolatelmlite
+export DOTNET_GCHeapHardLimit=1C0000000
 dotnet run
 ```
 
@@ -134,3 +153,4 @@ MIT License
 
 
 ソフトウェアは「現状有姿」で提供され、商品性、特定目的への適合性、および権利の非侵害性に関する保証を含むがこれらに限定されず、明示的であるか黙示的であるかを問わず、いかなる種類の保証も行われません。著作者または著作権者は、契約、不法行為、またはその他の行為であるかを問わず、ソフトウェアまたはソフトウェアの使用もしくはその他に取り扱いに起因または関連して生じるいかなる請求、損害賠償、その他の責任について、一切の責任を負いません。
+
