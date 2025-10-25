@@ -10,7 +10,7 @@ dotnet publish -c Release --self-contained true -r win-x64
 ※-p:PublishSingleFile=Trueをつけると、単一ファイルになるが、誤検知されるようになるのでつけない。
 
 dotnet tool install --global nuget-license
-nuget-license -i cll-dotnet.sln -o Markdown > 3rd_license.md
+nuget-license -i ChocolateLMLite.sln -o Markdown > 3rd_license.md
 */
 
 namespace CllDotnet

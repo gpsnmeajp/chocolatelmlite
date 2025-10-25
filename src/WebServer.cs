@@ -625,7 +625,9 @@ namespace CllDotnet
                     }
                 }
 
-                await app!.StopAsync();
+                if(app != null){
+                    await app!.StopAsync();
+                }
             }).Wait();
             MyLog.LogWrite("OK");
         }

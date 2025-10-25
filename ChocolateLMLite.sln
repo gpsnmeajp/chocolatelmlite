@@ -2,7 +2,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cll-dotnet", "cll-dotnet.csproj", "{0475B22C-FCC5-A97D-9DC6-939F31A78E02}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChocolateLMLite", "ChocolateLMLite.csproj", "{0475B22C-FCC5-A97D-9DC6-939F31A78E02}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
