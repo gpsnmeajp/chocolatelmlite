@@ -314,7 +314,13 @@ namespace CllDotnet
                         // 会話履歴ファイルのタイムスタンプを取得する
                         long? lastTimestamp = null;
                         string talkFilePath = Path.Combine(dir, talkJsonlFilename);
-                        lastTimestamp = new DateTimeOffset(File.GetLastWriteTimeUtc(talkFilePath)).ToUnixTimeSeconds();
+                        if (File.Exists(talkFilePath))
+                        {
+                            lastTimestamp = new DateTimeOffset(File.GetLastWriteTimeUtc(talkFilePath)).ToUnixTimeSeconds();
+                        }else
+                        {
+                            lastTimestamp = null;
+                        }
                         personaList.Add((id, name, lastTimestamp ?? 0));
                     }
                 }
@@ -1231,7 +1237,7 @@ namespace CllDotnet
             MyLog.LogWrite("mcp.jsonファイルを保存しました。");
         }
 
-        // ファイル名に使えない文字を除去する
+        // ファイル名に使えない文字を除去する(ディレクトリトラバーサル対策)
         private string SanitizeFilename(string filename)
         {
             var invalidChars = Path.GetInvalidFileNameChars();
