@@ -641,21 +641,24 @@ namespace CllDotnet
                 var talk = talks[i];
                 if (talk.AttachmentId != null && talk.AttachmentId.Count > 0)
                 {
+                    var attachmentIds = talk.AttachmentId;
                     // メッセージインデックスがcutoffMessageIndexより古い場合、添付ファイルを削除する
                     if (i < talks.Count - cutoffMessageIndex)
                     {
-                        // 添付ファイルを削除(元を書き換えないように新しいTalkEntryを作成する)
-                        talks[i] = new TalkEntry
-                        {
-                            Uuid = talk.Uuid,
-                            Role = talk.Role,
-                            Text = talk.Text,
-                            Reasoning = talk.Reasoning,
-                            ToolDetail = talk.ToolDetail,
-                            AttachmentId = null,
-                            Timestamp = talk.Timestamp
-                        };
+                        // 添付ファイルを削除
+                        attachmentIds = null;
                     }
+                    // 元を書き換えないように新しいTalkEntryを作成する(全部)
+                    talks[i] = new TalkEntry
+                    {
+                        Uuid = talk.Uuid,
+                        Role = talk.Role,
+                        Text = talk.Text,
+                        Reasoning = talk.Reasoning,
+                        ToolDetail = talk.ToolDetail,
+                        AttachmentId = attachmentIds,
+                        Timestamp = talk.Timestamp
+                    };
                 }
             }
             return talks;

@@ -63,6 +63,7 @@ namespace CllDotnet
                 FileManager fileManager = new FileManager();
 
                 bool anotherInstanceRunning = false;
+                bool hasMutex = false;
                 try
                 {
                     try
@@ -75,6 +76,7 @@ namespace CllDotnet
                         }
                         // ロックを獲得できた場合はそのまま保持し、終了時に解放されるようにする
                         mutex?.WaitOne(0, false);
+                        hasMutex = true;
                     }
                     catch (UnauthorizedAccessException)
                     {
@@ -96,7 +98,10 @@ namespace CllDotnet
                 }
                 finally
                 {
-                    mutex?.ReleaseMutex();
+                    if (hasMutex)
+                    {
+                        mutex?.ReleaseMutex();
+                    }
                     mutex?.Dispose();
                 }
             }
