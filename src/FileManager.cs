@@ -256,13 +256,13 @@ namespace CllDotnet
             }
             catch (TimeZoneNotFoundException)
             {
-                MyLog.LogWrite($"指定されたタイムゾーンが見つかりません: {generalSettings.TimeZone}。デフォルトのAsia/Tokyoを使用します。");
-                return TimeZoneInfo.FindSystemTimeZoneById("Asia/Tokyo");
+                MyLog.LogWrite($"指定されたタイムゾーンが見つかりません: {generalSettings.TimeZone}。システムのデフォルトタイムゾーンを使用します。");
+                return TimeZoneInfo.Local;
             }
             catch (InvalidTimeZoneException)
             {
-                MyLog.LogWrite($"指定されたタイムゾーンが無効です: {generalSettings.TimeZone}。デフォルトのAsia/Tokyoを使用します。");
-                return TimeZoneInfo.FindSystemTimeZoneById("Asia/Tokyo");
+                MyLog.LogWrite($"指定されたタイムゾーンが無効です: {generalSettings.TimeZone}。システムのデフォルトタイムゾーンを使用します。");
+                return TimeZoneInfo.Local;
             }
         }
 
@@ -499,6 +499,7 @@ namespace CllDotnet
                 MyLog.LogWrite("アクティブなペルソナのメモリファイルを読み込み完了");
                 return LoadYamlOrCreateNew<YamlMemory>(memoryPath);
             }
+            // ペルソナが呼び出す処理なので、基本ありえない
             MyLog.LogWrite("アクティブなペルソナがありません。空のメモリを返します。");
             throw new InvalidOperationException("アクティブなペルソナがありません。空のメモリを返します。");
         }
@@ -543,6 +544,8 @@ namespace CllDotnet
                 MyLog.LogWrite($"アクティブなペルソナのメモリを追加: {entry.Id} {newContent}");
                 return true;
             }
+
+            // ペルソナが呼び出す処理なので、基本ありえない
             MyLog.LogWrite("アクティブなペルソナがありません。メモリの追加/更新に失敗しました。");
             throw new InvalidOperationException("アクティブなペルソナがありません。メモリの追加/更新に失敗しました。");
         }
@@ -570,6 +573,8 @@ namespace CllDotnet
                     return false;
                 }
             }
+
+            // ペルソナが呼び出す処理なので、基本ありえない
             MyLog.LogWrite("アクティブなペルソナがありません。メモリの削除に失敗しました。");
             throw new InvalidOperationException("アクティブなペルソナがありません。メモリの削除に失敗しました。");
         }

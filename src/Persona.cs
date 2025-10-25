@@ -377,26 +377,34 @@ namespace CllDotnet
             }
 
             // 画像データなので1024x1024未満にリサイズする。
-            using (var image = new MagickImage(data))
+            try
             {
-                if (image.Width > 1024 || image.Height > 1024)
+                using (var image = new MagickImage(data))
                 {
-                    image.Resize(new MagickGeometry
+                    if (image.Width > 1024 || image.Height > 1024)
                     {
-                        Width = 1024,
-                        Height = 1024,
-                        IgnoreAspectRatio = false,
-                        Greater = true
-                    });
+                        image.Resize(new MagickGeometry
+                        {
+                            Width = 1024,
+                            Height = 1024,
+                            IgnoreAspectRatio = false,
+                            Greater = true
+                        });
 
-                    using (var ms = new MemoryStream())
-                    {
-                        image.Format = MagickFormat.Png;
-                        image.Write(ms);
-                        data = ms.ToArray();
-                        filename = Path.ChangeExtension(filename, ".png");
+                        using (var ms = new MemoryStream())
+                        {
+                            image.Format = MagickFormat.Png;
+                            image.Write(ms);
+                            data = ms.ToArray();
+                            filename = Path.ChangeExtension(filename, ".png");
+                        }
                     }
                 }
+            }
+            catch (MagickException)
+            {
+                result["error"] = "画像の処理に失敗しました。";
+                return result;
             }
 
             var id = fileManager.SaveAttachmentToActivePersona(filename, data);
@@ -455,26 +463,34 @@ namespace CllDotnet
             }
 
             // pngでない場合はpngに変換する。
-            using (var image = new MagickImage(data))
+            try
             {
-                if (image.Width > 2048 || image.Height > 2048)
+                using (var image = new MagickImage(data))
                 {
-                    image.Resize(new MagickGeometry
+                    if (image.Width > 2048 || image.Height > 2048)
                     {
-                        Width = 2048,
-                        Height = 2048,
-                        IgnoreAspectRatio = false,
-                        Greater = true
-                    });
-                }
+                        image.Resize(new MagickGeometry
+                        {
+                            Width = 2048,
+                            Height = 2048,
+                            IgnoreAspectRatio = false,
+                            Greater = true
+                        });
+                    }
 
-                using (var ms = new MemoryStream())
-                {
-                    image.Format = MagickFormat.Png;
-                    image.Write(ms);
-                    data = ms.ToArray();
-                    filename = Path.ChangeExtension(filename, ".png");
+                    using (var ms = new MemoryStream())
+                    {
+                        image.Format = MagickFormat.Png;
+                        image.Write(ms);
+                        data = ms.ToArray();
+                        filename = Path.ChangeExtension(filename, ".png");
+                    }
                 }
+            }
+            catch (MagickException)
+            {
+                result["error"] = "画像の処理に失敗しました。";
+                return result;
             }
 
             var success = fileManager.SaveFileContentToActivePersona(filename, data);
