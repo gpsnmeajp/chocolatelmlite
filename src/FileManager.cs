@@ -1145,9 +1145,6 @@ namespace CllDotnet
             var activePersonaDir = GetPersonaDirectoryById(activeId.Value);
             var talkFilePath = Path.Combine(activePersonaDir, talkJsonlFilename);
 
-            // 会話履歴を取得(安全のためキャッシュは使わない)
-            var messages = GetAllTalkHistoryAllFromActivePersona();
-
             if (message.Uuid == Guid.Empty)
             {
                 // メッセージにuuidを追加する
@@ -1164,6 +1161,16 @@ namespace CllDotnet
             }
             else
             {
+                var messages = activePersonaTalkEntriesCache;
+                var lastEntry = GetLastTalkEntryFromActivePersona();
+
+                // 最後のエントリ以外が対象の場合、会話履歴をすべて取得し直す
+                if (lastEntry != null && lastEntry.Uuid != message.Uuid)
+                {
+                    // 会話履歴を取得(安全のためキャッシュは使わない)
+                    messages = GetAllTalkHistoryAllFromActivePersona();
+                }
+
                 // 更新
                 var index = messages.FindIndex(m => m.Uuid == message.Uuid);
                 if (index != -1)
