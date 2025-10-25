@@ -24,7 +24,7 @@ namespace CllDotnet
         FileManager fileManager;
         ConsoleMonitor consoleMonitor;
         CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-        bool isGenerating = false;
+        volatile bool isGenerating = false;
         Tools tools;
         string responseText = "";
         public LLM(FileManager fileManager, ConsoleMonitor consoleMonitor, Tools tools)

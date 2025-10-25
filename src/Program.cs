@@ -27,42 +27,78 @@ namespace CllDotnet
             MyLog.LogWrite("準備中...");
             Console.CancelKeyPress += Canceler;
 
-            // 同時起動は拒否する
-            if (IsAnotherInstanceRunning())
+            // カレントフォルダ
+            MyLog.LogWrite($"カレントフォルダ: {Directory.GetCurrentDirectory()}");
+
+            // カレントフォルダ直下にstaticフォルダが有るかチェック。なければ例外。
+            string staticDir = Path.Combine(Directory.GetCurrentDirectory(), "static");
+            if (!Directory.Exists(staticDir))
             {
-                MyLog.LogWrite("既にサーバーが起動中です。二重起動はできません。");
-                Thread.Sleep(3000);
+                MyLog.LogWrite($"staticフォルダが存在しません: {staticDir}");
                 return;
             }
 
+            // カレントフォルダ直下にdataフォルダが有るかチェック。なければ作成。
+            string dataDir = Path.Combine(Directory.GetCurrentDirectory(), "data"); ;
+            if (!Directory.Exists(dataDir))
+            {
+                MyLog.LogWrite($"dataフォルダが存在しないため作成します: {dataDir}");
+                Directory.CreateDirectory(dataDir);
+            }
+
+            // カレントフォルダ直下にlogsフォルダが有るかチェック。なければ作成。
+            string logsDir = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+            if (!Directory.Exists(logsDir))
+            {
+                MyLog.LogWrite($"logsフォルダが存在しないため作成します: {logsDir}");
+                Directory.CreateDirectory(logsDir);
+            }
+
+            MyLog.LogWrite("フォルダチェック完了");
+
             while (!exit)
             {
-                Thread.Sleep(1000);
-                Start().Wait();
-                GC.Collect();
-            }
+                // ファイルマネージャーの初期化
+                MyLog.LogWrite("ファイルマネージャーの初期化");
+                FileManager fileManager = new FileManager();
 
-            mutex?.ReleaseMutex();
-            mutex?.Dispose();
-        }
-
-        static bool IsAnotherInstanceRunning()
-        {
-            try
-            {
-                mutex = new Mutex(false, "Global\\ChocolateLMLiteMutex", out bool createdNew);
-                if (!createdNew)
+                bool anotherInstanceRunning = false;
+                try
                 {
-                    // 既に他のインスタンスが起動している
-                    return true;
+                    try
+                    {
+                        mutex = new Mutex(false, $"Global\\ChocolateLMLiteMutex{fileManager.generalSettings.HttpPort}", out bool createdNew);
+                        if (!createdNew)
+                        {
+                            // 既に他のインスタンスが起動している
+                            anotherInstanceRunning = true;
+                        }
+                        // ロックを獲得できた場合はそのまま保持し、終了時に解放されるようにする
+                        mutex?.WaitOne(0, false);
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        // アクセス拒否された場合も、他のインスタンスが起動しているとみなす
+                        anotherInstanceRunning = true;
+                    }
+
+                    // 同時起動は拒否する
+                    if (anotherInstanceRunning)
+                    {
+                        MyLog.LogWrite("既にサーバーが起動中です。二重起動はできません。");
+                        Thread.Sleep(3000);
+                        return;
+                    }
+
+                    Thread.Sleep(1000);
+                    Start(fileManager).Wait();
+                    GC.Collect();
                 }
-                // ロックを獲得できた場合はそのまま保持し、終了時に解放されるようにする
-                return false;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // アクセス拒否された場合も、他のインスタンスが起動しているとみなす
-                return true;
+                finally
+                {
+                    mutex?.ReleaseMutex();
+                    mutex?.Dispose();
+                }
             }
         }
 
@@ -77,46 +113,12 @@ namespace CllDotnet
             cts.Cancel();
         }
 
-        static async Task Start()
+        static async Task Start(FileManager fileManager)
         {
             try
             {
                 using (cts = new CancellationTokenSource())
                 {
-
-                    // カレントフォルダ
-                    MyLog.LogWrite($"カレントフォルダ: {Directory.GetCurrentDirectory()}");
-
-                    // カレントフォルダ直下にstaticフォルダが有るかチェック。なければ例外。
-                    string staticDir = Path.Combine(Directory.GetCurrentDirectory(), "static");
-                    if (!Directory.Exists(staticDir))
-                    {
-                        MyLog.LogWrite($"staticフォルダが存在しません: {staticDir}");
-                        return;
-                    }
-
-                    // カレントフォルダ直下にdataフォルダが有るかチェック。なければ作成。
-                    string dataDir = Path.Combine(Directory.GetCurrentDirectory(), "data"); ;
-                    if (!Directory.Exists(dataDir))
-                    {
-                        MyLog.LogWrite($"dataフォルダが存在しないため作成します: {dataDir}");
-                        Directory.CreateDirectory(dataDir);
-                    }
-
-                    // カレントフォルダ直下にlogsフォルダが有るかチェック。なければ作成。
-                    string logsDir = Path.Combine(Directory.GetCurrentDirectory(), "logs");
-                    if (!Directory.Exists(logsDir))
-                    {
-                        MyLog.LogWrite($"logsフォルダが存在しないため作成します: {logsDir}");
-                        Directory.CreateDirectory(logsDir);
-                    }
-
-                    MyLog.LogWrite("フォルダチェック完了");
-
-                    // ファイルマネージャーの初期化
-                    MyLog.LogWrite("ファイルマネージャーの初期化");
-                    FileManager fileManager = new FileManager();
-
                     // コンソールモニターの起動
                     MyLog.LogWrite("コンソールモニターの起動");
                     ConsoleMonitor consoleMonitor = new ConsoleMonitor(fileManager);
