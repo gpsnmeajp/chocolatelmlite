@@ -22,6 +22,7 @@ namespace CllDotnet
         private ImageGenerater _imageGenerater;
         public int? lastAttachmentId = null;
         public bool isImageGenerated = false; // 連続作成制限
+        List<AITool> _mcpTools = new List<AITool>();
 
         public Tools(ImageGenerater imageGenerater, FileManager fileManager, ConsoleMonitor consoleMonitor)
         {
@@ -38,6 +39,17 @@ namespace CllDotnet
                     try
                     {
                         await InitMcpToolsAsync();
+
+                        // MCPツールを追加
+                        foreach (var client in _mcpClients)
+                        {
+                            // MCPクライアントから利用可能なツールを取得して追加
+                            var mcpTools = await client.ListToolsAsync();
+                            foreach (var tool in mcpTools)
+                            {
+                                _mcpTools.Add(tool);
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -82,16 +94,7 @@ namespace CllDotnet
 
             if (generalSettings.EnableMcpTools)
             {
-                // MCPツールを追加
-                foreach (var client in _mcpClients)
-                {
-                    // MCPクライアントから利用可能なツールを取得して追加
-                    var mcpTools = await client.ListToolsAsync();
-                    foreach (var tool in mcpTools)
-                    {
-                        tools.Add(tool);
-                    }
-                }
+                tools.AddRange(_mcpTools);
             }
 
             return tools;

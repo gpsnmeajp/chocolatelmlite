@@ -209,8 +209,10 @@ namespace CllDotnet
                     timeoutCts.CancelAfter(TimeSpan.FromSeconds(fileManager.generalSettings.TimeoutSeconds));
                     using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
+                    var toolsList = await tools.GetAvailableTools();
+
                     MyLog.LogWrite($"タイムアウト設定: {fileManager.generalSettings.TimeoutSeconds}秒");
-                    MyLog.LogWrite($"ツール: [{string.Join(", ", (await tools.GetAvailableTools()).Select(t => t.Name))}]");
+                    MyLog.LogWrite($"ツール: [{string.Join(", ", toolsList.Select(t => t.Name))}]");
                     MyLog.LogWrite($"Temperature: {fileManager.generalSettings.Temperature}");
                     MyLog.LogWrite($"MaxOutputTokens: {fileManager.generalSettings.MaxTokens}");
 
@@ -220,7 +222,7 @@ namespace CllDotnet
                         {
                             Temperature = (float)fileManager.generalSettings.Temperature,
                             ToolMode = ChatToolMode.Auto,
-                            Tools = await tools.GetAvailableTools(),
+                            Tools = toolsList,
                             MaxOutputTokens = fileManager.generalSettings.MaxTokens
                         }, linkedCts.Token))
                     {
