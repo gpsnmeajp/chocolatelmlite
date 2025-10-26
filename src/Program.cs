@@ -205,7 +205,10 @@ namespace CllDotnet
 
                     MyLog.LogWrite($"開始: port {fileManager.generalSettings.HttpPort}");
                     server.RunSync(fileManager.generalSettings.HttpPort, fileManager.generalSettings.LocalOnly, fileManager.generalSettings.SystemSettingsLocalOnly, cts.Token);
-                    MyLog.LogWrite($"終了");
+                    MyLog.LogWrite($"終了しています...");
+
+                    // 各種処理が終わるまで待つ(CancellationTokenでキャンセルされるまで)
+                    await Task.Delay(1500);
                 }
             }
             catch (Exception ex)
