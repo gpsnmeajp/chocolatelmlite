@@ -653,7 +653,7 @@ namespace CllDotnet
             {
                 var personaDir = GetPersonaDirectoryById(activeId.Value);
                 var settingsPath = Path.Combine(personaDir, settingsFilename);
-                MyLog.LogWrite("アクティブなペルソナの設定ファイルを読み込み完了");
+                // MyLog.LogWrite("アクティブなペルソナの設定ファイルを読み込み完了");
                 return LoadYamlOrCreateNew<YamlPersona>(settingsPath);
             }
             MyLog.LogWrite("アクティブなペルソナがありません。空の設定を返します。");

@@ -28,73 +28,76 @@ namespace CllDotnet
         public async Task PerformPeriodicTasks(CancellationToken cancellationToken)
         {
             var generalSettings = fileManager.generalSettings;
-            var activePersonaSettings = fileManager.GetActivePersonaSettings();
 
             // タイマー生成処理
-            if (generalSettings.EnableTimerGenerate && activePersonaSettings.TimerCycleMinutes > 0)
+            if (generalSettings.EnableTimerGenerate)
             {
-                // 次の生成時刻を計算
-                var nextGeneratedAt = lastGeneratedAt.AddMinutes(activePersonaSettings.TimerCycleMinutes);
-
-                // 現在時刻が次の生成時刻を過ぎている場合、生成処理を実行
-                if (DateTime.UtcNow >= nextGeneratedAt)
+                var activePersonaSettings = fileManager.GetActivePersonaSettings();
+                if (activePersonaSettings.TimerCycleMinutes > 0)
                 {
-                    // ただし、連続生成回数の制限に達した場合はスキップする
-                    if (consecutiveTimerGenerations >= generalSettings.TimerGenerateLimitMax)
-                    {
-                        MyLog.LogWrite($"タイマー生成処理が連続{generalSettings.TimerGenerateLimitMax}回に達したため、スキップします。");
-                        return;
-                    }
+                    // 次の生成時刻を計算
+                    var nextGeneratedAt = lastGeneratedAt.AddMinutes(activePersonaSettings.TimerCycleMinutes);
 
-                    // 生成処理中はスキップする
-                    if (llm.IsGenerating())
+                    // 現在時刻が次の生成時刻を過ぎている場合、生成処理を実行
+                    if (DateTime.UtcNow >= nextGeneratedAt)
                     {
-                        MyLog.LogWrite("生成処理中のため、スキップします。");
-                        return;
-                    }
-
-                    lastGeneratedAt = DateTime.UtcNow; // 最後の生成時刻を更新する
-                    consecutiveTimerGenerations++;
-                    MyLog.LogWrite($"タイマー生成処理を実行します {consecutiveTimerGenerations}回目 {activePersonaSettings.TimerCycleMinutes}分おき");
-
-                    // タイマーメッセージをユーザーロールで挿入
-                    string tt = $"<system>{fileManager.generalSettings.TimerGenerateMessage}</system>";
-                    var entry = new TalkEntry
-                    {
-                        Uuid = Guid.Empty,
-                        Role = TalkRole.ChocolateLM,
-                        Text = tt,
-                        Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                        AttachmentId = null,
-                        ToolDetail = "",
-                        Reasoning = string.Empty,
-                        Tokens = Tokens.CountTokens(tt)
-                    };
-                    var newGuid = await fileManager.WithTalkHistoryLock(async () =>
-                    {
-                        await Task.Delay(0);
-                        return fileManager.UpsertTalkHistoryToActivePersona(entry);
-                    }, cancellationToken);
-
-                    _ = Task.Run(async () =>
-                    {
-                        try
+                        // ただし、連続生成回数の制限に達した場合はスキップする
+                        if (consecutiveTimerGenerations >= generalSettings.TimerGenerateLimitMax)
                         {
-                            var success = await fileManager.WithTalkHistoryLock(async () =>
+                            MyLog.LogWrite($"タイマー生成処理が連続{generalSettings.TimerGenerateLimitMax}回に達したため、スキップします。");
+                            return;
+                        }
+
+                        // 生成処理中はスキップする
+                        if (llm.IsGenerating())
+                        {
+                            MyLog.LogWrite("生成処理中のため、スキップします。");
+                            return;
+                        }
+
+                        lastGeneratedAt = DateTime.UtcNow; // 最後の生成時刻を更新する
+                        consecutiveTimerGenerations++;
+                        MyLog.LogWrite($"タイマー生成処理を実行します {consecutiveTimerGenerations}回目 {activePersonaSettings.TimerCycleMinutes}分おき");
+
+                        // タイマーメッセージをユーザーロールで挿入
+                        string tt = $"<system>{fileManager.generalSettings.TimerGenerateMessage}</system>";
+                        var entry = new TalkEntry
+                        {
+                            Uuid = Guid.Empty,
+                            Role = TalkRole.ChocolateLM,
+                            Text = tt,
+                            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                            AttachmentId = null,
+                            ToolDetail = "",
+                            Reasoning = string.Empty,
+                            Tokens = Tokens.CountTokens(tt)
+                        };
+                        var newGuid = await fileManager.WithTalkHistoryLock(async () =>
+                        {
+                            await Task.Delay(0);
+                            return fileManager.UpsertTalkHistoryToActivePersona(entry);
+                        }, cancellationToken);
+
+                        _ = Task.Run(async () =>
+                        {
+                            try
                             {
-                                if(!await llm!.GenerateResponseAsync())
+                                var success = await fileManager.WithTalkHistoryLock(async () =>
                                 {
-                                    // 生成失敗時は連続タイマー生成回数を上限にして中止
-                                    consecutiveTimerGenerations = int.MaxValue;
-                                }
-                                return true;
-                            }, cancellationToken);
-                        }
-                        catch (Exception e)
-                        {
-                            MyLog.LogWrite($"生成処理例外 {e.Message} {e.StackTrace}");
-                        }
-                    });
+                                    if (!await llm!.GenerateResponseAsync())
+                                    {
+                                        // 生成失敗時は連続タイマー生成回数を上限にして中止
+                                        consecutiveTimerGenerations = int.MaxValue;
+                                    }
+                                    return true;
+                                }, cancellationToken);
+                            }
+                            catch (Exception e)
+                            {
+                                MyLog.LogWrite($"生成処理例外 {e.Message} {e.StackTrace}");
+                            }
+                        });
+                    }
                 }
             }
         }
