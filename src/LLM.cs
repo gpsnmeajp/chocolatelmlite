@@ -184,14 +184,16 @@ namespace CllDotnet
                         {
                             var stat = fileManager.GetTalkStatsFromActivePersona();
                             MyLog.LogWrite($"トーク履歴がすべてカットオフされました。生成を中止します。全システムプロンプトトークン数: {stat?.BuiltSystemPromptTokens} ユーザー入力システムプロンプトトークン数: {stat?.RawSystemPromptTokens}");
+                            string t = $"【Chocolate LM Lite システムエラー】\n会話履歴が全てカットオフされてしまいました。(履歴総数 == 切捨数)\n一言も話しかけることが出来ないため、このままでは会話が成立しません。\n\nトークン上限(TalkHistoryCutoffThreshold)が低すぎるか、システムプロンプトやメモリが大きすぎます。\n(あるいはツールが多すぎる、プロジェクトファイルが多すぎる、直前の発言が巨大すぎるなどもありえます。)\n上限を増やせない場合は、不要な機能を徹底的にオフにすることで解決することがあります。\n\n＊＊＊＊＊\n+ トークン数上限(TalkHistoryCutoffThreshold): {fileManager.generalSettings.TalkHistoryCutoffThreshold}\n+ 全システムプロンプトトークン数: {stat?.BuiltSystemPromptTokens}\n+ うち、ユーザー入力システムプロンプトトークン数: {stat?.RawSystemPromptTokens}\n\n＊＊＊＊＊\n\n{(fileManager.generalSettings.TalkHistoryCutoffThreshold < 32000 ? "⚠️トークン上限(TalkHistoryCutoffThreshold)が 32K 未満のようです(小さすぎる)。設定ミスを疑ってください。\n\n" : "")}※直前の入力が巨大すぎる場合を除き、会話履歴を削除・作り直ししてもこの問題はまず解決しません。\n上記いずれかの設定項目を調整してください。";
                             var entryEx = new TalkEntry
                             {
                                 Uuid = Guid.Empty,
                                 Role = TalkRole.ChocolateLM,
-                                Text = $"【Chocolate LM Lite システムエラー】\n会話履歴が全てカットオフされてしまいました。(履歴総数 == 切捨数)\n一言も話しかけることが出来ないため、このままでは会話が成立しません。\n\nトークン上限(TalkHistoryCutoffThreshold)が低すぎるか、システムプロンプトやメモリが大きすぎます。\n(あるいはツールが多すぎる、プロジェクトファイルが多すぎる、直前の発言が巨大すぎるなどもありえます。)\n上限を増やせない場合は、不要な機能を徹底的にオフにすることで解決することがあります。\n\n＊＊＊＊＊\n+ トークン数上限(TalkHistoryCutoffThreshold): {fileManager.generalSettings.TalkHistoryCutoffThreshold}\n+ 全システムプロンプトトークン数: {stat?.BuiltSystemPromptTokens}\n+ うち、ユーザー入力システムプロンプトトークン数: {stat?.RawSystemPromptTokens}\n\n＊＊＊＊＊\n\n{(fileManager.generalSettings.TalkHistoryCutoffThreshold < 32000 ? "⚠️トークン上限(TalkHistoryCutoffThreshold)が 32K 未満のようです(小さすぎる)。設定ミスを疑ってください。\n\n" : "")}※直前の入力が巨大すぎる場合を除き、会話履歴を削除・作り直ししてもこの問題はまず解決しません。\n上記いずれかの設定項目を調整してください。",
+                                Text = t,
                                 ToolDetail = "",
                                 AttachmentId = null,
-                                Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds()
+                                Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds(),
+                                Tokens = Tokens.CountTokens(t)
                             };
 
                             fileManager.UpsertTalkHistoryToActivePersona(entryEx);
@@ -517,6 +519,7 @@ namespace CllDotnet
                         }
                         lastMessage.AttachmentId.AddRange(message.AttachmentId);
                     }
+                    lastMessage.Tokens += message.Tokens;
                 }
                 else
                 {
@@ -532,7 +535,8 @@ namespace CllDotnet
                         Text = message.Text,
                         ToolDetail = message.ToolDetail,
                         AttachmentId = message.AttachmentId != null ? new List<int>(message.AttachmentId) : null,
-                        Timestamp = message.Timestamp
+                        Timestamp = message.Timestamp,
+                        Tokens = message.Tokens
                     };
                 }
             }
@@ -561,14 +565,16 @@ namespace CllDotnet
             responseText = "";
 
             // 関数呼出し情報を一時的にトーク履歴に追加する
+            string t = $"[{context.Function.Name}] お待ち下さい...";
             var entryCall = new TalkEntry
             {
                 Uuid = Guid.Empty,
                 Role = TalkRole.Tool,
-                Text = $"[{context.Function.Name}] お待ち下さい...",
+                Text = t,
                 ToolDetail = argJson,
                 AttachmentId = null,
-                Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds()
+                Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds(),
+                Tokens = Tokens.CountTokens(t, argJson)
             };
 
             var entryCallGuid = fileManager.UpsertTalkHistoryToActivePersona(entryCall);
@@ -588,14 +594,16 @@ namespace CllDotnet
                 MyLog.LogWrite($"関数呼び出し結果: {resultJson}");
 
                 // 関数呼出し結果に差し替える
+                string t2 = $"[{context.Function.Name}] 成功";
                 var entryResult = new TalkEntry
                 {
                     Uuid = entryCallGuid,
                     Role = TalkRole.Tool,
-                    Text = $"[{context.Function.Name}] 成功",
+                    Text = t2,
                     ToolDetail = resultJson,
                     AttachmentId = tools.lastAttachmentId != null ? new List<int> { tools.lastAttachmentId.Value } : null,
-                    Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds()
+                    Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds(),
+                    Tokens = Tokens.CountTokens(t2, resultJson)
                 };
 
                 fileManager.UpsertTalkHistoryToActivePersona(entryResult);
@@ -608,15 +616,17 @@ namespace CllDotnet
                 var resultJson = Serializer.JsonSerialize(new Dictionary<string, object?> { { "call", context.Arguments }, { "error", ex.Message } }, false);
 
                 // 関数呼出し結果に差し替える
+                string tx = $"[{context.Function.Name}] 失敗しました。";
                 var entryResult = new TalkEntry
                 {
                     Uuid = entryCallGuid,
                     Role = TalkRole.Tool,
-                    Text = $"[{context.Function.Name}] 失敗しました。",
+                    Text = tx,
                     Reasoning = ex.Message,
                     ToolDetail = resultJson,
                     AttachmentId = null,
-                    Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds()
+                    Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds(),
+                    Tokens = Tokens.CountTokens(tx, resultJson)
                 };
 
                 fileManager.UpsertTalkHistoryToActivePersona(entryResult);
@@ -657,7 +667,8 @@ namespace CllDotnet
                         Reasoning = talk.Reasoning,
                         ToolDetail = talk.ToolDetail,
                         AttachmentId = attachmentIds,
-                        Timestamp = talk.Timestamp
+                        Timestamp = talk.Timestamp,
+                        Tokens = talk.Tokens
                     };
                 }
             }
@@ -675,7 +686,8 @@ namespace CllDotnet
                 Reasoning = finalReasoningText,
                 ToolDetail = "",
                 AttachmentId = null,
-                Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds()
+                Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds(),
+                Tokens = Tokens.CountTokens(finalResponseText)
             };
 
             fileManager.UpsertTalkHistoryToActivePersona(entry);

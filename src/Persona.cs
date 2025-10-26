@@ -58,15 +58,17 @@ namespace CllDotnet
                     MyLog.LogWrite($"タイマー生成処理を実行します {consecutiveTimerGenerations}回目 {activePersonaSettings.TimerCycleMinutes}分おき");
 
                     // タイマーメッセージをユーザーロールで挿入
+                    string tt = $"<system>{fileManager.generalSettings.TimerGenerateMessage}</system>";
                     var entry = new TalkEntry
                     {
                         Uuid = Guid.Empty,
                         Role = TalkRole.ChocolateLM,
-                        Text = $"<system>{fileManager.generalSettings.TimerGenerateMessage}</system>",
+                        Text = tt,
                         Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                         AttachmentId = null,
                         ToolDetail = "",
-                        Reasoning = string.Empty
+                        Reasoning = string.Empty,
+                        Tokens = Tokens.CountTokens(tt)
                     };
                     var newGuid = await fileManager.WithTalkHistoryLock(async () =>
                     {
@@ -681,7 +683,10 @@ namespace CllDotnet
                 Role = TalkRole.Unknown,
                 Text = string.Empty,
                 ToolDetail = string.Empty,
-                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                AttachmentId = null,
+                Reasoning = string.Empty,
+                Tokens = 0
             };
 
             if (content.TryGetValue("Role", out var roleValue))

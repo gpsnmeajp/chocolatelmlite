@@ -103,6 +103,7 @@ namespace CllDotnet
         public string ToolDetail { get; set; } = "";
         public List<int>? AttachmentId { get; set; } = null;
         public long Timestamp { get; set; } = 0;
+        public int Tokens { get; set; } = 0;
     }
 
     public class TalkStats
@@ -1152,6 +1153,13 @@ namespace CllDotnet
             {
                 // メッセージにuuidを追加する
                 message.Uuid = Guid.NewGuid();
+
+                // uuidが既存のメッセージと重複しないようにする(編集時に事故になるため)
+                var existingMessages = activePersonaTalkEntriesCache;
+                while (existingMessages.Any(m => m.Uuid == message.Uuid))
+                {
+                    message.Uuid = Guid.NewGuid();
+                }
 
                 // 新規追加はファイルの末尾に追加するだけで良い
                 using (var writer = new StreamWriter(talkFilePath, append: true, new UTF8Encoding(false)))

@@ -8,7 +8,7 @@ namespace CllDotnet
 {
     public static class UpdateChecker
     {
-        const string CurrentVersion = "0.01a"; // 現在のバージョン
+        const string CurrentVersion = "0.01b"; // 現在のバージョン
         const string UpdateCheckUrl = "https://sabowl.sakura.ne.jp/api/chocolatelm/version.json"; // アップデート情報のURL
 
         /*

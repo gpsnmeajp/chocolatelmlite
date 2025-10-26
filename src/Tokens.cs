@@ -13,6 +13,10 @@ namespace CllDotnet
         {
             return encoder.CountTokens(input);
         }
+        public static int CountTokens(string text, string toolDetail)
+        {
+            return encoder.CountTokens(text + (string.IsNullOrEmpty(toolDetail) ? "" : $"\n\n{toolDetail}"));
+        }
 
         // トーク履歴全体のトークン数をカウントする
         public static int CountTalkTokens(IEnumerable<TalkEntry> inputs)
@@ -20,8 +24,7 @@ namespace CllDotnet
             int totalTokens = 0;
             foreach (var entry in inputs)
             {
-                totalTokens += CountTokens(entry.Text +
-                    (string.IsNullOrEmpty(entry.ToolDetail) ? "" : $"\n\n{entry.ToolDetail}"));
+                totalTokens += entry.Tokens;
 
                 // 添付ファイル一つ辺り1024トークンと仮定(GPT-4.1)
                 if (entry.AttachmentId != null)
@@ -36,30 +39,28 @@ namespace CllDotnet
         }
 
         // システムプロンプトとトーク履歴を末尾から合算したとき、指定のトークン数に収まる切り出されたトーク履歴を返す
-        public static List<TalkEntry> TrimTalkTokens(string systemPrompt, IEnumerable<TalkEntry> inputs, int maxTokens)
+        public static List<TalkEntry> TrimTalkTokens(string systemPrompt, List<TalkEntry> inputs, int maxTokens)
         {
             List<TalkEntry> result = new List<TalkEntry>();
             int totalTokens = CountTokens(systemPrompt);
 
-            // 末尾からトーク履歴を追加していく
-            var reversedInputs = new List<TalkEntry>(inputs);
-            reversedInputs.Reverse();
-            foreach (var entry in reversedInputs)
+            // ツールや自動挿入が概ね200トークンなので加算しておく(全部オフにすると0になるが、最大値。MCPを使うともっと増えるがあくまで概算として計算しない)
+            totalTokens += 200;
+            
+            // Token数が超過しない範囲で末尾から追加していく(トークン数は、entry.Tokensを使う)
+            for (int i = inputs.Count - 1; i >= 0; i--)
             {
-                int entryTokens = CountTokens(entry.Text +
-                    (string.IsNullOrEmpty(entry.ToolDetail) ? "" : $"\n\n{entry.ToolDetail}"));
-                if ((totalTokens + entryTokens) > maxTokens)
+                var entry = inputs[i];
+                if (totalTokens + entry.Tokens <= maxTokens)
                 {
-                    break;
+                    result.Insert(0, entry); // 先頭に挿入
+                    totalTokens += entry.Tokens;
                 }
-                // 添付ファイルのトークン計算は削除。ここでは考慮しない。
-
-                result.Add(entry);
-                totalTokens += entryTokens;
+                else
+                {
+                    break; // 超過したら終了
+                }
             }
-
-            // 順序を元に戻す
-            result.Reverse();
             return result;
         }
     }
