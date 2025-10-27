@@ -11,6 +11,8 @@ dotnet publish -c Release --self-contained true -r win-x64
 
 dotnet tool install --global nuget-license
 nuget-license -i ChocolateLMLite.sln -o Markdown > 3rd_license.md
+
+dotnet list package --include-transitive --format console
 */
 
 namespace CllDotnet

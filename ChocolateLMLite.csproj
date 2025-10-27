@@ -20,6 +20,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.10" />
     <PackageReference Include="ModelContextProtocol" Version="0.4.0-preview.3" />
+    <PackageReference Include="nulastudio.NetBeauty" Version="2.1.5" />
     <PackageReference Include="Tiktoken" Version="2.2.0" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
