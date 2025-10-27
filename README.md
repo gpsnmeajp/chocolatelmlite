@@ -154,6 +154,9 @@ dotnet run
 ## DeepWiki
 [DeepWikiによる解析](https://deepwiki.com/gpsnmeajp/chocolatelmlite)
 
+## OpenRouterによる利用モデルランキング
+https://openrouter.ai/apps?url=https://github.com/gpsnmeajp/chocolatelmlite
+
 ## LICENSE
 MIT License
 
