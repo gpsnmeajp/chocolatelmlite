@@ -83,24 +83,32 @@ C# .Net 8.0
 Mac等でも動作するかと思いますが、動作検証はしていません。
 
 ## 推奨LLMプロバイダ(Base URL)
-+ [OpenRouter](https://openrouter.ai/) (`https://openrouter.ai/api/v1`) (もっとも推奨, 無料枠あり)
-+ LM Studio (`http://127.0.0.1:1234/v1`)
-+ Ollama (`http://127.0.0.1:11434/v1`)
++ [OpenRouter](https://openrouter.ai/) (`https://openrouter.ai/api/v1`) (もっとも推奨, 無料枠あり) (検証済み)
++ LM Studio (`http://127.0.0.1:1234/v1`) (検証済み)
++ Ollama (`http://127.0.0.1:11434/v1`) (検証済み)
 
 ※ローカルLLMの場合、APIキーは適当な文字を入れてください。
 
 その他OpenAI互換のエンドポイントを提供するLLMプロバイダであれば動作する見込みです。  
 例えば
 
-+ OpenAIは `https://api.openai.com/v1/`
-+ Geminiは `https://generativelanguage.googleapis.com/v1beta/openai/`
-+ Claudeは `https://api.anthropic.com/v1/`
++ OpenAIは `https://api.openai.com/v1/` (未検証)
++ Geminiは `https://generativelanguage.googleapis.com/v1beta/openai/`  (無料枠あり) (検証済み)
++ Claudeは `https://api.anthropic.com/v1/` (未検証)
 
-など。(ただし未検証です。OpenRouterの使用を強く推奨します。)
+など。
 
 なお、OpenAI互換のAPIが提供されないLLMプロバイダ(例えばAmazon Bedrock等)の場合、LiteLLM ProxyのようなOpenAI互換APIを提供するプロキシを間に挟むことで動作する可能性があります。
 
 画像生成に関してはOpenRouterのみのサポートです。
+
+## MCPツールの利用方法
+以下の方法で利用できます。
+
++ システム設定から、MCPを有効にする
++ data/mcp.jsonに、cursor仕様で設定を書く
+
+※ツール実行前の確認などはなく、自動で実行されます。接続するツールの安全性については十分に注意してください。
 
 ## ビルド手順
 
@@ -145,6 +153,9 @@ dotnet run
 
 ## DeepWiki
 [DeepWikiによる解析](https://deepwiki.com/gpsnmeajp/chocolatelmlite)
+
+## OpenRouterによる利用モデルランキング
+https://openrouter.ai/apps?url=https://github.com/gpsnmeajp/chocolatelmlite
 
 ## LICENSE
 MIT License
