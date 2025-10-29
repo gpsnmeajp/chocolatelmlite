@@ -36,7 +36,7 @@ const FIELD_DEFINITIONS = {
   },
   LlmApiKey: {
     label: 'APIキー',
-    description: 'LLMプロバイダーのAPIキーを入力します。ローカルLLMの場合は空欄可。',
+    description: 'LLMプロバイダーのAPIキーを入力します。ローカルLLMの場合はなにか適当に入力してください。',
     valueType: 'string',
     inputType: 'password',
     allowEmpty: true,

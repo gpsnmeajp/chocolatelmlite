@@ -116,7 +116,7 @@ namespace CllDotnet
         }
 
 
-        [Description("本アプリケーションについての説明文を取得")]
+        [Description("何ができるの？このアプリって何？")]
         async Task<string> Howto()
         {
             await Task.Delay(0);
@@ -205,7 +205,7 @@ namespace CllDotnet
             }
         }
 
-        [Description("任意の短文が保存できるメモリの追加・更新(500文字以内)")]
+        [Description("覚えておくべき情報を保存するの使います")]
         async Task<string> UpdatePersonaMemory(
             [Description("メモリID(0:新規)")] int id,
             [Description("新しい内容(空:削除)")] string newContent)
