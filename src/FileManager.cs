@@ -361,6 +361,10 @@ namespace CllDotnet
             string systemPromptPath = Path.Combine(personaDir, systemPromptFilename);
             File.WriteAllText(systemPromptPath, "あなたは親切なアシスタントです。ユーザーの質問に丁寧に回答してください。");
 
+            // 空の会話履歴ファイルの作成
+            var talkFilePath = Path.Combine(personaDir, talkJsonlFilename);
+            File.WriteAllText(talkFilePath, "");
+
             MyLog.LogWrite($"新しいペルソナフォルダを作成しました: {personaDir}");
             return id;
         }
