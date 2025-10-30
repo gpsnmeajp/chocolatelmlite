@@ -2438,19 +2438,13 @@ function escapeHtml(text) {
  * メッセージテキストをフォーマット
  *
  * Markdown形式のテキストをHTMLに変換します。
- * marked.jsが利用可能な場合はMarkdownとして処理し、
- * 利用できない場合はプレーンテキストとして改行を<br>に変換します。
  *
  * @param {string} text - フォーマットするテキスト
  * @returns {string} - フォーマットされたHTML文字列
  */
 function formatMessageText(text) {
-  text = text.replace(/[<>]/g, function(match) {
-    return {
-      '<': '&lt;',
-      '>': '&gt;',
-    }[match]
-  });
+  // 特定用途のタグをMarkdown形式に置換
+  text = text.replaceAll("<system>", "`").replaceAll("</system>", "`").replaceAll("</think>", "");
   return renderMarkdown(text || '');
 }
 
