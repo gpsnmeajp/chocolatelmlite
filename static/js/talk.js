@@ -324,6 +324,7 @@ async function init() {
  * @returns {string} - フォーマットされた日時文字列
  */
 function formatTimestamp(unixSeconds) {
+  // タイムスタンプが存在しない場合は空文字を返す
   if (!unixSeconds) {
     return '';
   }
@@ -384,9 +385,11 @@ async function loadGeneralSettings() {
 
     const rawName = typeof settings.YourName === 'string' ? settings.YourName : '';
     const trimmed = rawName.trim();
+    // ユーザー名が設定されている場合は状態を更新
     if (trimmed) {
       state.userName = trimmed;
 
+      // 既にメッセージが読み込まれている場合は再描画して表示名を更新
       if (state.messages.length > 0) {
         renderMessages();
       }
@@ -472,14 +475,18 @@ function cleanupPersonaMedia() {
 async function fetchPersonaMediaFile(fileName) {
   try {
     const response = await fetch(`/api/persona/active/${fileName}`, { cache: 'no-store' });
+    // レスポンスが正常でない場合
     if (!response.ok) {
+      // 404以外のエラーの場合は警告を出力（404は画像未設定として扱う）
       if (response.status !== 404) {
         console.warn(`Failed to load persona media (${fileName}): status ${response.status}`);
       }
       return null;
     }
 
+    // Blobデータを取得
     const blob = await response.blob();
+    // Blobが空の場合はnullを返す
     if (!blob || blob.size === 0) {
       return null;
     }
@@ -968,6 +975,7 @@ async function copyMessage(btn) {
   const originalHTML = btn.innerHTML;
 
   try {
+    // Clipboard APIが利用できない環境の場合は例外をスロー
     if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
       throw new Error('Clipboard API is unavailable.');
     }
@@ -1456,12 +1464,14 @@ function updateInfoBar(stats) {
     return;
   }
 
+  // 統計情報が渡された場合は保存、なければ前回の情報を使用
   if (stats) {
     state.lastStats = stats;
   } else if (state.lastStats) {
     stats = state.lastStats;
   }
 
+  // 統計情報がない場合は情報バーをクリア
   if (!stats) {
     infoBar.textContent = '';
     infoBar.classList.remove('warning');
@@ -1474,6 +1484,7 @@ function updateInfoBar(stats) {
   parts.push(`履歴総数: ${stats.Total ?? 0}`);
   parts.push(`切捨数: ${stats.Archived ?? 0}`);
 
+  // 発言数上限に達している場合は警告を表示
   if (stats.NeedUserRestRemind) {
     parts.push('上限超過<br>⚠ 設定された上限(8h)に達しました。休憩をおすすめします。');
     infoBar.classList.add('warning');
@@ -1543,7 +1554,32 @@ function renderMessages(options = {}) {
   // 読み込み待ちの画像カウンターをリセット
   state.pendingImages = 0;
 
-  const allMessages = Array.isArray(state.messages) ? state.messages : [];
+  let allMessages = Array.isArray(state.messages) ? state.messages : [];
+
+  if (allMessages.length > 1) {
+    const seenUuid = new Set();
+    const deduped = [];
+    let modified = false;
+
+    for (const message of allMessages) {
+      const uuid = typeof message?.Uuid === 'string' && message.Uuid ? message.Uuid : null;
+      if (uuid && seenUuid.has(uuid)) {
+        modified = true;
+        continue;
+      }
+
+      if (uuid) {
+        seenUuid.add(uuid);
+      }
+
+      deduped.push(message);
+    }
+
+    if (modified) {
+      state.messages = deduped;
+      allMessages = deduped;
+    }
+  }
 
   // すべてのメッセージをHTML要素に変換
   allMessages.forEach(message => {
@@ -2156,6 +2192,7 @@ function createMessageElement(message) {
   // 各種データを整形
   const timestamp = formatTimestamp(message.Timestamp);
   const messageBody = formatMessageText(message.Text);
+  // 推論内容がある場合は表示
   const reasoning = message.Reasoning
     ? `<div class="message-reasoning">${renderMarkdown(message.Reasoning)}</div>`
     : '';
@@ -2306,6 +2343,7 @@ function normalizeAttachmentIds(value) {
  * @returns {*} - パースされたツール詳細
  */
 function parseToolDetail(raw) {
+  // ツール詳細がnullまたはundefinedの場合
   if (raw == null) {
     return null;
   }
@@ -2339,14 +2377,17 @@ function parseToolDetail(raw) {
  * @returns {string} - ツール詳細ブロックのHTML
  */
 function renderToolDetail(toolDetail) {
+  // ツール詳細がない場合は空文字を返す
   if (toolDetail == null) {
     return '';
   }
 
   let serialized;
 
+  // 文字列の場合
   if (typeof toolDetail === 'string') {
     const trimmed = toolDetail.trim();
+    // 空文字列の場合は何も表示しない
     if (!trimmed) {
       return '';
     }
@@ -2379,6 +2420,7 @@ function renderToolDetail(toolDetail) {
  * @returns {string} - エスケープされた文字列
  */
 function escapeHtml(text) {
+  // テキストがnullまたはundefinedの場合は空文字を返す
   if (text == null) {
     return '';
   }
@@ -2942,6 +2984,7 @@ function scheduleWebSocketReconnect() {
  * スケジュール済みの再接続処理をキャンセルします。
  */
 function clearWebSocketReconnectTimer() {
+  // 再接続タイマーが設定されている場合はクリア
   if (state.websocketReconnectTimer) {
     clearTimeout(state.websocketReconnectTimer);
     state.websocketReconnectTimer = null;
@@ -2985,6 +3028,7 @@ function startPingMonitor() {
  * WebSocket接続が切断された際や、手動で接続を終了する際に呼び出されます。
  */
 function stopPingMonitor() {
+  // ping監視が開始されていない場合は何もしない
   if (!state.pingMonitorHandle) {
     return;
   }
