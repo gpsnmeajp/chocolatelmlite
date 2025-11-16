@@ -3,9 +3,9 @@
 :root {
   color-scheme: dark;
   /* ダークチョコレートテーマ (デフォルト) */
-  --bg-primary: #3d2820;
-  --bg-secondary: #4a342a;
-  --bg-tertiary: #2a1c15;
+  --bg-primary: #3d2820dd;
+  --bg-secondary: #4a342add;
+  --bg-tertiary: #2a1c15dd;
   --text-primary: #fff8e7;
   --text-secondary: #d4a574;
   --border-color: #6b4a3a;
@@ -40,9 +40,9 @@
   :root {
     color-scheme: light;
     /* ミルクチョコレートテーマ */
-    --bg-primary: #fff8f0;
-    --bg-secondary: #ffeedd;
-    --bg-tertiary: #fffcf7;
+    --bg-primary: #fff8f0dd;
+    --bg-secondary: #ffeedddd;
+    --bg-tertiary: #fffcf7dd;
     --text-primary: #2d1f1a;
     --text-secondary: #8b6f47;
     --border-color: #d4b896;
