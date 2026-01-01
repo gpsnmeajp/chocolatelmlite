@@ -47,18 +47,31 @@
           <input type="text" id="modelName" value="" placeholder="例: gpt-4o, claude-3-5-sonnet-20241022">
         </div>
         
+        <div class="info-message">
+          📋️ <strong>システムプロンプト:</strong><br>
+          アシスタントの役割や振る舞いを指定します。<br>
+          この指示は全体に強力かつ根本的に作用しますが、後からの変更には即効性が低いことが多いです。<br>
+        </div>
+
         <div class="form-group">
           <label>システムプロンプト</label>
           <textarea id="systemPrompt" rows="10" placeholder="アシスタントの役割や指示を入力...">あなたは親切で役立つアシスタントです。ユーザーの質問に丁寧に答えてください。</textarea>
         </div>
 
+        <div class="info-message">
+          🔧 <strong>ポストプロンプト:</strong><br>
+          ユーザー発言の後に指示を埋め込みます。この指示は即効性を持ち強力に作用します。<br>
+          この機能が有効の間、最新のユーザー発言は<code>&lt;user&gt;</code>タグで囲まれ、次に<code>&lt;system&gt;</code>タグで囲まれたポストプロンプトが続きます。<br>
+          <br>
+          例: <code>&lt;user&gt;こんにちは、元気？&lt;/user&gt;&lt;system&gt;必ず丁寧な口調で答えること。&lt;/system&gt;</code>
+        </div>
         <div class="form-group">
           <label>ポストプロンプト</label>
-          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin: 6px 0 10px 0;">
+          <p class="form-hint"></p>
+          <label class="checkbox-label">
             <input type="checkbox" id="enablePostPrompt"> 有効
           </label>
-          <textarea id="postPrompt" rows="6" placeholder="例: 必ず口調を守ること..."></textarea>
-          <p class="form-hint">ユーザー発言の後に指示を埋め込みます。この指示は即効性を持ち強力に作用します。</p>
+          <textarea id="postPrompt" rows="6" placeholder="例: 必ず丁寧な口調で答えること..."></textarea>
         </div>
 
         <details class="advanced-settings">
