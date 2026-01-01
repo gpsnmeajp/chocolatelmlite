@@ -120,7 +120,7 @@ const FIELD_DEFINITIONS = {
     min: 0,
     required: true,
     order: 103,
-    note: ''
+    note: '0にすると画像履歴を常にAIに送信します。'
   },
   TimeZone: {
     label: 'タイムゾーン',
