@@ -204,16 +204,26 @@ namespace CllDotnet
 
                         List<TalkEntry> mergedMessages = mergeRoleConsecutiveMessages(messages) ?? new List<TalkEntry>();
 
+                        var lastUserMessage = mergedMessages.LastOrDefault(m => m.Role == TalkRole.User);
+                        if (lastUserMessage == null)
+                        {
+                            throw new Exception("最後のユーザーメッセージが見つかりません。");
+                        }
+
                         // ポストプロンプトの追加(最終ユーザーメッセージを加工して追加する)
                         string postPrompt = activePersonaSettings.EnablePostPrompt ? activePersonaSettings.PostPrompt : "";
                         if (!string.IsNullOrWhiteSpace(postPrompt))
                         {
-                            var lastUserMessage = mergedMessages.LastOrDefault(m => m.Role == TalkRole.User);
-                            if (lastUserMessage != null)
-                            {
-                                lastUserMessage.Text = $"<user>{lastUserMessage.Text}</user>\n<system>{postPrompt}</system>";
-                                MyLog.LogWrite($"ポストプロンプトを最終ユーザーメッセージに追加: {lastUserMessage.Text}");
-                            }
+                            lastUserMessage.Text = $"<user>{lastUserMessage.Text}</user>\n<system>{postPrompt}</system>";
+                            MyLog.LogWrite($"ポストプロンプトを最終ユーザーメッセージに追加: {lastUserMessage.Text}");
+                        }
+
+                        // キーワードナレッジを取得して必要に応じて利用する
+                        var keywordKnowledge = BuildKeywordKnowledgeSnippet(lastUserMessage.Text);
+                        if (!string.IsNullOrWhiteSpace(keywordKnowledge))
+                        {
+                            lastUserMessage.Text = $"{lastUserMessage.Text}{keywordKnowledge}";
+                            MyLog.LogWrite($"キーワードナレッジを最終ユーザーメッセージに追加: {keywordKnowledge}");
                         }
 
                         List<ChatMessage> chatMessages = talkEntryListToChatMessageList(mergedMessages, systemprompt);
@@ -560,6 +570,73 @@ namespace CllDotnet
                 mergedMessages.Add(lastMessage);
             }
             return mergedMessages;
+        }
+
+        // キーワードナレッジを検索し、ナレッジを作成して返す
+        private string BuildKeywordKnowledgeSnippet(string? userText)
+        {
+            if (string.IsNullOrWhiteSpace(userText))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                // キーワードナレッジを取得
+                var keywordKnowledgeEntries = fileManager.GetActivePersonaKeywordKnowledge().KeywordKnowledgeEntries;
+                if (keywordKnowledgeEntries.Count == 0)
+                {
+                    return string.Empty;
+                }
+
+                var matchedKeywords = new List<string>();
+                var knowledgeSnippets = new List<string>();
+
+                // キーワードナレッジを検索
+                foreach (var entry in keywordKnowledgeEntries)
+                {
+                    if (string.IsNullOrWhiteSpace(entry.Keyword) || string.IsNullOrWhiteSpace(entry.Text))
+                    {
+                        continue;
+                    }
+
+                    // キーワードはカンマ区切りで複数指定可能
+                    var keywords = entry.Keyword.Split([',','，'], StringSplitOptions.RemoveEmptyEntries)
+                        .Select(k => k.Trim());
+
+                    bool isMatched = false;
+                    foreach (var keyword in keywords)
+                    {
+                        // 大文字小文字を区別せずにキーワードが含まれているかチェック
+                        if (userText.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            isMatched = true;
+                            break;
+                        }
+                    }
+
+                    if (isMatched)
+                    {
+                        // マッチしたキーワードナレッジを追加
+                        matchedKeywords.Add(entry.Keyword);
+                        var keywordLabel = (entry.Keyword ?? string.Empty).Replace("\"", "'");
+                        knowledgeSnippets.Add($"<knowledge key=\"{keywordLabel}\">{entry.Text}</knowledge>");
+                    }
+                }
+
+                if (knowledgeSnippets.Count == 0)
+                {
+                    return string.Empty;
+                }
+
+                MyLog.LogWrite($"一致したナレッジ: {string.Join(", ", matchedKeywords)}");
+                return "\n"+string.Join("\n", knowledgeSnippets);
+            }
+            catch (Exception ex)
+            {
+                MyLog.LogWrite($"キーワードナレッジの適用に失敗しました: {ex.Message} {ex.StackTrace}");
+                return string.Empty;
+            }
         }
 
         // ツール呼び出しの実装

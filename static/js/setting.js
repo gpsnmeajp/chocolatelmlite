@@ -8,6 +8,10 @@
 // 元の設定値を保持する変数（変更検知に使用）
 let originalSettings = {};
 
+const keywordKnowledgeState = {
+  editingId: null
+};
+
 // アップロード対象の資産設定
 const assetConfig = [
   { key: 'user', filename: 'user.png', label: 'ユーザーアイコン' },
@@ -28,7 +32,8 @@ const assetState = assetConfig.reduce((acc, entry) => {
 async function init() {
   setupAssetHandlers();
   setupPostPromptControls();
-  await Promise.all([loadSettings(), loadPersonaAssets(), loadGeneralSettings(), loadMemoryEntries()]);
+  setupKeywordKnowledgeControls();
+  await Promise.all([loadSettings(), loadPersonaAssets(), loadGeneralSettings(), loadKeywordKnowledgeEntries(), loadMemoryEntries()]);
 }
 
 /**
@@ -170,6 +175,441 @@ async function loadGeneralSettings() {
     }
   } catch (error) {
     console.error('Failed to load general settings:', error);
+  }
+}
+
+/**
+ * キーワードナレッジのコントロール（ボタン、モーダル）を初期化
+ *
+ * 追加・保存・更新ボタンのクリックイベントを設定し、
+ * モーダルのクリックやキーボード操作も処理します。
+ */
+function setupKeywordKnowledgeControls() {
+  // 各ボタンのDOM要素を取得
+  const addBtn = document.getElementById('keywordKnowledgeAdd');
+  const saveBtn = document.getElementById('keywordKnowledgeSave');
+  const refreshBtn = document.getElementById('keywordKnowledgeRefresh');
+
+  // ボタンのクリックイベントを登録
+  addBtn?.addEventListener('click', () => openKeywordKnowledgeEditor());
+  saveBtn?.addEventListener('click', () => saveKeywordKnowledgeEntry());
+  refreshBtn?.addEventListener('click', () => loadKeywordKnowledgeEntries());
+
+  // モーダルのイベント設定
+  const modal = ensureKeywordKnowledgeModal();
+  
+  // モーダル外をクリックしたら閉じる
+  modal.addEventListener('click', (event) => {
+    if (!(event.target instanceof HTMLElement)) {
+      return;
+    }
+    // data-kk-dismiss属性を持つ要素がクリックされた場合
+    if (event.target.dataset.kkDismiss !== undefined) {
+      closeKeywordKnowledgeEditor();
+    }
+  });
+
+  // Escapeキーでモーダルを閉じる
+  modal.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeKeywordKnowledgeEditor();
+    }
+  });
+}
+
+/**
+ * キーワードナレッジの編集モーダルを開く
+ *
+ * @param {object|null} entry - 編集する場合はエントリオブジェクト、新規追加の場合はnull
+ *
+ * 既存エントリを編集する場合はフィールドに値を設定し、
+ * 新規追加の場合は空のフォームを表示します。
+ */
+function openKeywordKnowledgeEditor(entry = null) {
+  // 入力フォームの要素を取得
+  const keywordInput = document.getElementById('keywordKnowledgeKeyword');
+  const textInput = document.getElementById('keywordKnowledgeText');
+  const modal = ensureKeywordKnowledgeModal();
+  const title = document.getElementById('keywordKnowledgeModalTitle');
+
+  // 編集中のエントリIDを状態に保存（新規の場合はnull）
+  keywordKnowledgeState.editingId = entry?.id ?? null;
+
+  // 入力フィールドに値を設定（新規の場合は空文字）
+  if (keywordInput) {
+    keywordInput.value = entry?.keyword ?? '';
+  }
+  if (textInput) {
+    textInput.value = entry?.text ?? '';
+  }
+
+  // モーダルのタイトルを編集/追加で切り替え
+  if (title) {
+    title.textContent = keywordKnowledgeState.editingId ? 'キーワードナレッジを編集' : 'キーワードナレッジを追加';
+  }
+
+  // モーダルを表示状態にする
+  if (modal) {
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  // キーワード入力欄にフォーカスを当てる
+  keywordInput?.focus();
+}
+
+/**
+ * キーワードナレッジの編集モーダルを閉じる
+ *
+ * モーダルを非表示にし、入力フィールドをクリアします。
+ * 編集状態もリセットされます。
+ */
+function closeKeywordKnowledgeEditor() {
+  // 入力フォームの要素を取得
+  const keywordInput = document.getElementById('keywordKnowledgeKeyword');
+  const textInput = document.getElementById('keywordKnowledgeText');
+  const modal = document.getElementById('keywordKnowledgeModal');
+
+  // 編集状態をリセット
+  keywordKnowledgeState.editingId = null;
+
+  // 入力フィールドをクリア
+  if (keywordInput) {
+    keywordInput.value = '';
+  }
+  if (textInput) {
+    textInput.value = '';
+  }
+  
+  // モーダルを非表示にする
+  if (modal) {
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+/**
+ * キーワードナレッジのエントリを保存する
+ *
+ * モーダルで入力された内容をサーバーに送信します。
+ * 編集中のIDがある場合は更新、ない場合は新規追加として処理されます。
+ */
+async function saveKeywordKnowledgeEntry() {
+  // 入力フォームとボタンの要素を取得
+  const keywordInput = document.getElementById('keywordKnowledgeKeyword');
+  const textInput = document.getElementById('keywordKnowledgeText');
+  const saveBtn = document.getElementById('keywordKnowledgeSave');
+
+  // 入力値を取得（前後の空白を削除）
+  const keyword = (keywordInput?.value ?? '').trim();
+  const text = (textInput?.value ?? '').trim();
+
+  // キーワードが空の場合はエラー表示
+  if (!keyword) {
+    showAlertModal('キーワードを入力してください。', { title: 'エラー' });
+    keywordInput?.focus();
+    return;
+  }
+
+  // サーバーに送信するデータを作成
+  const payload = { keyword, text };
+  // 編集中のIDがあれば追加（更新の場合）
+  if (keywordKnowledgeState.editingId) {
+    payload.id = keywordKnowledgeState.editingId;
+  }
+
+  try {
+    // 二重送信を防ぐため保存ボタンを無効化
+    if (saveBtn) {
+      saveBtn.disabled = true;
+    }
+
+    // サーバーに保存リクエストを送信
+    const data = await fetchJson('/api/persona/active/keyword-knowledge', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    // エラーレスポンスの確認
+    if (data && data.error) {
+      throw new Error(data.error);
+    }
+
+    // 保存成功：モーダルを閉じて一覧を再読み込み
+    closeKeywordKnowledgeEditor();
+    await loadKeywordKnowledgeEntries();
+  } catch (error) {
+    console.error('Failed to save keyword knowledge entry:', error);
+    showAlertModal('キーワードナレッジの保存に失敗しました。時間をおいて再度お試しください。', { title: 'エラー' });
+  } finally {
+    // 処理完了後、保存ボタンを再度有効化
+    if (saveBtn) {
+      saveBtn.disabled = false;
+    }
+  }
+}
+
+/**
+ * キーワードナレッジモーダルのDOM要素を取得する
+ *
+ * @returns {HTMLElement} モーダル要素
+ * @throws {Error} モーダル要素が見つからない場合
+ *
+ * モーダル要素の存在を確認し、取得します。
+ * 要素が存在しない場合はエラーをスローします。
+ */
+function ensureKeywordKnowledgeModal() {
+  let modal = document.getElementById('keywordKnowledgeModal');
+  if (!modal) {
+    throw new Error('Keyword Knowledge Modal element not found.');
+  }
+  return modal;
+}
+
+/**
+ * キーワードナレッジのエントリ一覧をサーバーから読み込む
+ *
+ * サーバーからキーワードナレッジのデータを取得し、
+ * 画面に表示します。読み込み中やエラー時の状態表示も制御します。
+ */
+async function loadKeywordKnowledgeEntries() {
+  // 各UI要素を取得
+  const itemsContainer = document.getElementById('keywordKnowledgeItems');
+  const loadingIndicator = document.getElementById('keywordKnowledgeLoading');
+  const errorState = document.getElementById('keywordKnowledgeError');
+  const countLabel = document.getElementById('keywordKnowledgeCount');
+
+  // コンテナが存在しない場合は処理を中断
+  if (!itemsContainer) {
+    return;
+  }
+
+  // 読み込み中の表示を開始し、エラー表示を非表示
+  if (loadingIndicator) {
+    loadingIndicator.hidden = false;
+  }
+  if (errorState) {
+    errorState.hidden = true;
+  }
+
+  try {
+    // サーバーからデータを取得
+    const data = await fetchJson('/api/persona/active/keyword-knowledge');
+    const entries = Array.isArray(data?.keyword_knowledge_entries) ? data.keyword_knowledge_entries : [];
+
+    // 件数ラベルを更新
+    if (countLabel) {
+      countLabel.textContent = `${entries.length}件`;
+      countLabel.hidden = false;
+    }
+
+    // エントリ一覧を画面に描画
+    renderKeywordKnowledgeEntries(entries);
+  } catch (error) {
+    console.error('Failed to load keyword knowledge entries:', error);
+    // エラー発生時はエラー表示を表示
+    if (errorState) {
+      errorState.hidden = false;
+    }
+    // 空の状態表示は非表示に
+    const empty = document.getElementById('keywordKnowledgeEmpty');
+    if (empty) {
+      empty.hidden = true;
+    }
+  } finally {
+    // 読み込み完了後、読み込み中表示を非表示
+    if (loadingIndicator) {
+      loadingIndicator.hidden = true;
+    }
+  }
+}
+
+/**
+ * キーワードナレッジのエントリ一覧を画面に描画する
+ *
+ * @param {Array} entries - キーワードナレッジのエントリ配列
+ *
+ * エントリが空の場合は空の状態メッセージを表示し、
+ * エントリがある場合は各エントリをリスト表示します。
+ */
+function renderKeywordKnowledgeEntries(entries) {
+  // コンテナと空の状態表示の要素を取得
+  const itemsContainer = document.getElementById('keywordKnowledgeItems');
+  const emptyState = document.getElementById('keywordKnowledgeEmpty');
+
+  if (!itemsContainer) {
+    return;
+  }
+
+  // 既存のコンテンツをクリア
+  itemsContainer.innerHTML = '';
+
+  // エントリが空の場合は空の状態メッセージを表示
+  if (!entries || !entries.length) {
+    if (emptyState) {
+      emptyState.hidden = false;
+    }
+    return;
+  }
+
+  // エントリがある場合は空の状態メッセージを非表示
+  if (emptyState) {
+    emptyState.hidden = true;
+  }
+
+  // DocumentFragmentを使用してパフォーマンスを最適化
+  const fragment = document.createDocumentFragment();
+  entries.forEach((entry) => {
+    const element = createKeywordKnowledgeElement(entry);
+    if (element) {
+      fragment.appendChild(element);
+    }
+  });
+
+  // 一度にDOMに追加
+  itemsContainer.appendChild(fragment);
+}
+
+/**
+ * キーワードナレッジのエントリ要素（HTML）を生成する
+ *
+ * @param {object} entry - キーワードナレッジのエントリデータ
+ * @returns {HTMLElement|null} 生成されたエントリ要素、または不正なデータの場合はnull
+ *
+ * 各エントリに対して、キーワード、内容、編集ボタン、削除ボタンを含む
+ * HTML要素を動的に生成します。
+ */
+function createKeywordKnowledgeElement(entry) {
+  // エントリデータを正規化（型チェック・デフォルト値設定）
+  const normalized = normalizeKeywordKnowledgeEntry(entry);
+  if (!normalized) {
+    return null;
+  }
+
+  // エントリ全体のラッパー要素
+  const wrapper = document.createElement('div');
+  wrapper.className = 'knowledge-item';
+
+  // ヘッダー部分（キーワードとアクションボタン）
+  const head = document.createElement('div');
+  head.className = 'knowledge-item-head';
+
+  // キーワード表示部分
+  const keyword = document.createElement('div');
+  keyword.className = 'knowledge-item-keyword';
+  keyword.textContent = '✏️' + (normalized.keyword || '(キーワード未設定)');
+
+  // アクションボタンのコンテナ
+  const actions = document.createElement('div');
+  actions.className = 'knowledge-item-actions';
+
+  // 編集ボタン
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.className = 'btn-secondary';
+  editBtn.textContent = '編集';
+  editBtn.addEventListener('click', () => openKeywordKnowledgeEditor(normalized));
+
+  // 削除ボタン
+  const deleteBtn = document.createElement('button');
+  deleteBtn.type = 'button';
+  deleteBtn.className = 'btn-danger';
+  deleteBtn.textContent = '削除';
+  deleteBtn.addEventListener('click', () => deleteKeywordKnowledgeEntry(normalized.id));
+
+  // ボタンをアクションコンテナに追加
+  actions.appendChild(editBtn);
+  actions.appendChild(deleteBtn);
+
+  // ヘッダーに要素を追加
+  head.appendChild(keyword);
+  head.appendChild(actions);
+
+  // 本文部分（キーワードの内容テキスト）
+  const body = document.createElement('div');
+  body.className = 'knowledge-item-text';
+  body.textContent = normalized.text || '（内容なし）';
+
+  // ラッパーに全要素を追加
+  wrapper.appendChild(head);
+  wrapper.appendChild(body);
+
+  return wrapper;
+}
+
+/**
+ * キーワードナレッジのエントリデータを正規化する
+ *
+ * @param {object} entry - サーバーから取得した生のエントリデータ
+ * @returns {object|null} 正規化されたエントリデータ、または不正なデータの場合はnull
+ *
+ * サーバーから取得したデータのプロパティ名の揺れ（大文字/小文字）を吸収し、
+ * 型変換やデフォルト値の設定を行います。
+ */
+function normalizeKeywordKnowledgeEntry(entry) {
+  // データが存在しない、またはオブジェクトでない場合はnullを返す
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  // プロパティ名の大文字小文字の違いを吸収して値を取得
+  const id = Number(entry.Id ?? entry.id ?? 0);
+  const keyword = String(entry.Keyword ?? entry.keyword ?? '').trim();
+  const text = String(entry.Text ?? entry.text ?? '');
+
+  // 正規化されたオブジェクトを返す
+  return {
+    id: Number.isFinite(id) ? id : 0,
+    keyword,
+    text
+  };
+}
+
+/**
+ * キーワードナレッジのエントリを削除する
+ *
+ * @param {number} id - 削除するエントリのID
+ *
+ * ユーザーに確認ダイアログを表示し、確認後にサーバーに削除リクエストを送信します。
+ * 削除成功後は一覧を再読み込みします。
+ */
+async function deleteKeywordKnowledgeEntry(id) {
+  // IDが不正な場合は処理を中断
+  if (!Number.isFinite(id) || id <= 0) {
+    return;
+  }
+
+  // ユーザーに削除確認ダイアログを表示
+  const confirmed = await showConfirmModal('このキーワードナレッジを削除しますか？', {
+    title: '削除の確認',
+    confirmLabel: '削除',
+    cancelLabel: 'キャンセル',
+    variant: 'danger'
+  });
+
+  // キャンセルされた場合は処理を中断
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    // サーバーに削除リクエストを送信
+    const data = await fetchJson(`/api/persona/active/keyword-knowledge/${id}`, {
+      method: 'DELETE'
+    });
+
+    // エラーレスポンスの確認
+    if (data && data.error) {
+      throw new Error(data.error);
+    }
+
+    // 削除成功：モーダルを閉じて一覧を再読み込み
+    closeKeywordKnowledgeEditor();
+    await loadKeywordKnowledgeEntries();
+  } catch (error) {
+    console.error('Failed to delete keyword knowledge entry:', error);
+    showAlertModal('キーワードナレッジの削除に失敗しました。時間をおいて再度お試しください。', { title: 'エラー' });
   }
 }
 

@@ -690,6 +690,58 @@ namespace CllDotnet
             };
         }
 
+        public Dictionary<string, object> GetActivePersonaKeywordKnowledge()
+        {
+            var knowledge = fileManager.GetActivePersonaKeywordKnowledge();
+            return new Dictionary<string, object>
+            {
+                { "keyword_knowledge_entries", knowledge.KeywordKnowledgeEntries },
+                { "count", knowledge.KeywordKnowledgeEntries.Count }
+            };
+        }
+
+        public Dictionary<string, object> UpsertActivePersonaKeywordKnowledge(Dictionary<string, JsonElement> content)
+        {
+            int? id = null;
+            if (content.TryGetValue("id", out var idElement) && idElement.ValueKind == JsonValueKind.Number)
+            {
+                id = idElement.GetInt32();
+            }
+
+            if (!content.TryGetValue("keyword", out var keywordElement) || keywordElement.ValueKind != JsonValueKind.String)
+            {
+                return new Dictionary<string, object> { { "error", "keywordは必須です。(要素がない)" } };
+            }
+
+            var keyword = keywordElement.GetString() ?? string.Empty;
+            var text = content.TryGetValue("text", out var textElement) && textElement.ValueKind == JsonValueKind.String
+                ? textElement.GetString() ?? string.Empty
+                : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                return new Dictionary<string, object> { { "error", "keywordは必須です。(空白のみ)" } };
+            }
+
+            var entry = fileManager.UpsertActivePersonaKeywordKnowledge(id, keyword, text);
+            return new Dictionary<string, object>
+            {
+                { "success", "done" },
+                { "entry", entry }
+            };
+        }
+
+        public Dictionary<string, object> RemoveActivePersonaKeywordKnowledge(int id)
+        {
+            var success = fileManager.RemoveActivePersonaKeywordKnowledge(id);
+            if (success)
+            {
+                return new Dictionary<string, object> { { "success", "done" } };
+            }
+
+            return new Dictionary<string, object> { { "error", "指定されたIDのキーワードが見つかりません。" } };
+        }
+
         private TalkEntry ToTalkEntry(Dictionary<string, JsonElement> content, Guid existingUuid)
         {
             var entry = new TalkEntry

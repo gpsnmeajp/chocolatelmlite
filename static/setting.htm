@@ -102,8 +102,38 @@
         </details>
 
         <div class="info-message">
+          🧩 <strong>キーワードナレッジについて:</strong><br>
+          ユーザー発言に含まれるキーワードに応じて、<code>&lt;knowledge&gt;</code>タグで補足情報を追加し、AIに渡します。<br>
+          補足情報は会話履歴に残らず、最新の生成処理時に動的に適用されるため、即効性があります。<br>
+          例えば、「自宅」と言うキーワードに、「ユーザーの住所は東京都」というナレッジを紐付けると、ユーザーが「自宅の天気は？」と尋ねた際に、AIは住所を参照できます。<br>
+          なお、キーワードは完全一致です。<br>
+        </div>
+
+        <div class="knowledge-section">
+          <div class="knowledge-header">
+            <div class="knowledge-header-left">
+              <h3 class="section-title">キーワードナレッジ</h3>
+              <span class="knowledge-count" id="keywordKnowledgeCount" hidden></span>
+            </div>
+            <div class="knowledge-actions">
+              <button type="button" class="btn-secondary" id="keywordKnowledgeRefresh">再読み込み</button>
+              <button type="button" class="btn-primary" id="keywordKnowledgeAdd">新規追加</button>
+            </div>
+          </div>
+
+          <div class="knowledge-list" id="keywordKnowledgeList">
+            <div class="knowledge-loading" id="keywordKnowledgeLoading">読み込み中...</div>
+            <div class="knowledge-message" id="keywordKnowledgeEmpty" hidden>キーワードナレッジが登録されていません。</div>
+            <div class="knowledge-message knowledge-message--error" id="keywordKnowledgeError" hidden>キーワードナレッジを取得できませんでした。時間を置いて再度お試しください。</div>
+            <div class="knowledge-items" id="keywordKnowledgeItems"></div>
+          </div>
+        </div>
+
+        <div class="info-message">
           💡 <strong>メモリについて:</strong><br>
-          メモリはペルソナごとに保存されます。以下の一覧で現在の内容を確認できます。編集するには <code>memory.yaml</code> を直接編集してください。
+          メモリはペルソナごとに保存され、システムプロンプトの一部として使用されます。<br>
+          AIから編集可能な動的なシステムプロンプトとして機能します。<br>
+          以下の一覧で現在の内容を確認できます。編集するにはAIに依頼するか、 <code>memory.yaml</code> を直接編集してください。
         </div>
 
         <div class="memory-section">
@@ -176,5 +206,27 @@
   
   <script src="js/common.js" defer></script>
   <script src="js/setting.js" defer></script>
+
+  <div class="app-modal" id="keywordKnowledgeModal" role="dialog" aria-hidden="true" aria-modal="true" aria-labelledby="keywordKnowledgeModalTitle">
+    <div class="app-modal-backdrop" data-kk-dismiss></div>
+    <div class="app-modal-content">
+      <h2 class="app-modal-title" id="keywordKnowledgeModalTitle">キーワードナレッジ</h2>
+      <div class="app-modal-body">
+        <div class="form-group">
+          <label for="keywordKnowledgeKeyword">キーワード</label>
+          <input type="text" id="keywordKnowledgeKeyword" placeholder="例: 自宅">
+          <p class="form-hint">ユーザー発言にこの文字列が含まれると<code>&lt;knowledge&gt;</code>タグで補足情報がAIに渡されます。キーワードは完全に一致する必要があります。カンマ区切りで複数指定することも出来ます。</p>
+        </div>
+        <div class="form-group">
+          <label for="keywordKnowledgeText">補足情報の内容</label>
+          <textarea id="keywordKnowledgeText" rows="5" placeholder="例: ユーザーの住んでいる地域は東京都"></textarea>
+        </div>
+      </div>
+      <div class="app-modal-actions">
+        <button type="button" class="btn-secondary" data-kk-dismiss>キャンセル</button>
+        <button type="button" class="btn-primary" id="keywordKnowledgeSave">保存</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

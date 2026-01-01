@@ -22,6 +22,18 @@ namespace CllDotnet
         public string PostPrompt { get; set; } = "";
     }
 
+    public class YamlKeywordKnowledge
+    {
+        public List<YamlKeywordKnowledgeEntry> KeywordKnowledgeEntries { get; set; } = new List<YamlKeywordKnowledgeEntry>();
+    }
+
+    public class YamlKeywordKnowledgeEntry
+    {
+        public int Id { get; set; } = 0;
+        public string Keyword { get; set; } = "";
+        public string Text { get; set; } = "";
+    }
+
     public class YamlMemory
     {
         public List<YamlMemoryEntry> MemoryEntries { get; set; } = new List<YamlMemoryEntry>();
@@ -130,6 +142,7 @@ namespace CllDotnet
         private readonly string settingsFilename = "settings.yaml";
         private readonly string manageFilename = "manage.yaml";
         private readonly string systemPromptFilename = "system_prompt.txt";
+        private readonly string keywordKnowledgeFilename = "keyword_knowledge.yaml";
         private readonly string talkJsonlFilename = "talk.jsonl";
         private readonly string talkDbFilename = "talk.sqlite3";
         private readonly string memoryFilename = "memory.yaml";
@@ -591,6 +604,109 @@ namespace CllDotnet
             // ペルソナが呼び出す処理なので、基本ありえない
             MyLog.LogWrite("アクティブなペルソナがありません。メモリの削除に失敗しました。");
             throw new InvalidOperationException("アクティブなペルソナがありません。メモリの削除に失敗しました。");
+        }
+
+        // アクティブなペルソナのキーワードナレッジを取得する
+        public YamlKeywordKnowledge GetActivePersonaKeywordKnowledge()
+        {
+            var activeId = GetActivePersonaId();
+            if (activeId != null)
+            {
+                var personaDir = GetPersonaDirectoryById(activeId.Value);
+                var knowledgePath = Path.Combine(personaDir, keywordKnowledgeFilename);
+                var knowledge = LoadYamlOrCreateNew<YamlKeywordKnowledge>(knowledgePath);
+
+                // 既存データにIDがない場合は付与して保存
+                int nextId = knowledge.KeywordKnowledgeEntries.Count > 0 ? knowledge.KeywordKnowledgeEntries.Max(e => e.Id) : 0;
+                bool needsSave = false;
+                foreach (var entry in knowledge.KeywordKnowledgeEntries)
+                {
+                    if (entry.Id <= 0)
+                    {
+                        nextId++;
+                        entry.Id = nextId;
+                        needsSave = true;
+                    }
+                }
+                if (needsSave)
+                {
+                    SaveYaml(knowledge, knowledgePath);
+                }
+
+                MyLog.LogWrite("アクティブなペルソナのキーワードナレッジファイルを読み込み完了");
+                return knowledge;
+            }
+
+            MyLog.LogWrite("アクティブなペルソナがありません。空のキーワードナレッジを返します。");
+            throw new InvalidOperationException("アクティブなペルソナがありません。空のキーワードナレッジを返します。");
+        }
+
+        // アクティブなペルソナのキーワードナレッジをupsertする(idが0またはnullの場合は追加)
+        public YamlKeywordKnowledgeEntry UpsertActivePersonaKeywordKnowledge(int? id, string keyword, string text)
+        {
+            var activeId = GetActivePersonaId();
+            if (activeId == null)
+            {
+                MyLog.LogWrite("アクティブなペルソナがありません。キーワードナレッジの保存に失敗しました。");
+                throw new InvalidOperationException("アクティブなペルソナがありません。キーワードナレッジの保存に失敗しました。");
+            }
+
+            var personaDir = GetPersonaDirectoryById(activeId.Value);
+            var knowledgePath = Path.Combine(personaDir, keywordKnowledgeFilename);
+            var knowledge = LoadYamlOrCreateNew<YamlKeywordKnowledge>(knowledgePath);
+
+            var normalizedKeyword = keyword?.Trim() ?? string.Empty;
+            var normalizedText = text?.Trim() ?? string.Empty;
+
+            if (id.HasValue && id.Value > 0)
+            {
+                var existingEntry = knowledge.KeywordKnowledgeEntries.FirstOrDefault(e => e.Id == id.Value);
+                if (existingEntry != null)
+                {
+                    existingEntry.Keyword = normalizedKeyword;
+                    existingEntry.Text = normalizedText;
+                    SaveYaml(knowledge, knowledgePath);
+                    MyLog.LogWrite($"キーワードナレッジを更新: {id} {normalizedKeyword}");
+                    return existingEntry;
+                }
+            }
+
+            var newEntry = new YamlKeywordKnowledgeEntry
+            {
+                Id = knowledge.KeywordKnowledgeEntries.Count > 0 ? knowledge.KeywordKnowledgeEntries.Max(e => e.Id) + 1 : 1,
+                Keyword = normalizedKeyword,
+                Text = normalizedText
+            };
+            knowledge.KeywordKnowledgeEntries.Add(newEntry);
+            SaveYaml(knowledge, knowledgePath);
+            MyLog.LogWrite($"キーワードナレッジを追加: {newEntry.Id} {normalizedKeyword}");
+            return newEntry;
+        }
+
+        // アクティブなペルソナのキーワードナレッジからidのエントリを削除する
+        public bool RemoveActivePersonaKeywordKnowledge(int id)
+        {
+            var activeId = GetActivePersonaId();
+            if (activeId == null)
+            {
+                MyLog.LogWrite("アクティブなペルソナがありません。キーワードナレッジの削除に失敗しました。");
+                throw new InvalidOperationException("アクティブなペルソナがありません。キーワードナレッジの削除に失敗しました。");
+            }
+
+            var personaDir = GetPersonaDirectoryById(activeId.Value);
+            var knowledgePath = Path.Combine(personaDir, keywordKnowledgeFilename);
+            var knowledge = LoadYamlOrCreateNew<YamlKeywordKnowledge>(knowledgePath);
+            var entryToRemove = knowledge.KeywordKnowledgeEntries.FirstOrDefault(e => e.Id == id);
+            if (entryToRemove != null)
+            {
+                knowledge.KeywordKnowledgeEntries.Remove(entryToRemove);
+                SaveYaml(knowledge, knowledgePath);
+                MyLog.LogWrite($"キーワードナレッジを削除: {id}");
+                return true;
+            }
+
+            MyLog.LogWrite($"キーワードナレッジの削除に失敗しました。指定されたidのエントリが存在しません: {id}");
+            return false;
         }
 
         // アクティブなペルソナのメモリのロックを取得してFuncを実行する。(取得できなければ待機する)

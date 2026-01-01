@@ -170,6 +170,127 @@
   color: var(--text-secondary);
 }
 
+.knowledge-section {
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.knowledge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.knowledge-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.knowledge-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.knowledge-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.knowledge-editor {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-secondary);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.knowledge-editor-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.knowledge-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.knowledge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.knowledge-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.knowledge-item {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px 14px;
+  background-color: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.knowledge-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.knowledge-item-keyword {
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.knowledge-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.knowledge-item-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.knowledge-message,
+.knowledge-loading {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.knowledge-message--error {
+  color: var(--danger-color);
+}
+
+.app-modal .form-group:last-of-type {
+  margin-bottom: 0;
+}
+
 .memory-section {
   margin-bottom: 28px;
 }
@@ -351,7 +472,8 @@
 .app-modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 0;
 }
 
 .app-modal-content {

@@ -538,6 +538,35 @@ namespace CllDotnet
                 await context.Response.WriteAsync(DictionaryToJson($"GET /api/persona/active/memory", persona.GetActivePersonaMemory()));
             });
 
+            app.MapGet("/api/persona/active/keyword-knowledge", async context =>
+            {
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(DictionaryToJson($"GET /api/persona/active/keyword-knowledge", persona.GetActivePersonaKeywordKnowledge()));
+            });
+
+            app.MapPost("/api/persona/active/keyword-knowledge", async context =>
+            {
+                context.Response.ContentType = "application/json";
+                var bodyDict = await ParseRequestBodyAsync($"POST /api/persona/active/keyword-knowledge", context);
+                await context.Response.WriteAsync(DictionaryToJson($"POST /api/persona/active/keyword-knowledge", persona.UpsertActivePersonaKeywordKnowledge(bodyDict)));
+            });
+
+            app.MapDelete("/api/persona/active/keyword-knowledge/{id}", async context =>
+            {
+                context.Response.ContentType = "application/json";
+                if (!int.TryParse(context.Request.RouteValues["id"]?.ToString(), out int idInt))
+                {
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                    await context.Response.WriteAsync(DictionaryToJson($"DELETE /api/persona/active/keyword-knowledge/{context.Request.RouteValues["id"]}", new Dictionary<string, object>
+                    {
+                        { "error", "idパラメーターは整数である必要があります。" }
+                    }));
+                    return;
+                }
+
+                await context.Response.WriteAsync(DictionaryToJson($"DELETE /api/persona/active/keyword-knowledge/{idInt}", persona.RemoveActivePersonaKeywordKnowledge(idInt)));
+            });
+
             // WebSocket接続のハンドリング
             app.Map("/ws", async context =>
             {
