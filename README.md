@@ -83,9 +83,18 @@ C# .Net 8.0
 Mac等でも動作するかと思いますが、動作検証はしていません。
 
 ## 推奨LLMプロバイダ(Base URL)
+
+クラウド系
+
 + [OpenRouter](https://openrouter.ai/) (`https://openrouter.ai/api/v1`) (もっとも推奨, 無料枠あり) (検証済み)
-+ LM Studio (`http://127.0.0.1:1234/v1`) (検証済み)
-+ Ollama (`http://127.0.0.1:11434/v1`) (検証済み)
++ [Ollama Cloud](https://ollama.com/cloud) (`https://ollama.com/v1/`) (無料枠あり/定額あり) (検証済み)
++ [NanoGPT](https://nano-gpt.com/) (`https://nano-gpt.com/api/v1`) (定額あり) (検証済み)
+
+ローカル系
+
++ [LM Studio](https://lmstudio.ai/) (`http://127.0.0.1:1234/v1`) (検証済み)
++ [Ollama](https://ollama.com/) (`http://127.0.0.1:11434/v1`) (検証済み)
++ [llama-server](https://github.com/ggml-org/llama.cpp/tree/master/tools/server) (`http://127.0.0.1:8080/v1`) (検証済み) (画像未対応)
 
 ※ローカルLLMの場合、APIキーは適当な文字を入れてください。
 
