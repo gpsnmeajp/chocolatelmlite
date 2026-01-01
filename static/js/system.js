@@ -42,7 +42,7 @@ const FIELD_DEFINITIONS = {
     allowEmpty: true,
     placeholder: '************',
     autocomplete: 'off',
-    note: '<a href="https://openrouter.ai/settings/keys">OpenRouterの場合はこちらからキーを作成します。</a>',
+    note: '<a href="https://openrouter.ai/settings/keys">OpenRouterの場合はこちらからキーを作成します。</a><br><a href="https://ollama.com/settings/keys">Ollama Cloudの場合はこちらからキーを作成します。</a><br><a href="https://nano-gpt.com/api">NanoGPTの場合はこちらからキーを作成します。</a>',
     order: 2
   },
   DefaultModel: {
@@ -51,7 +51,7 @@ const FIELD_DEFINITIONS = {
     valueType: 'string',
     required: true,
     placeholder: 'google/gemini-2.5-flash',
-    note: '<a href="https://openrouter.ai/models">OpenRouterの場合はこちらからモデルを探せます</a>',
+    note: '<a href="https://openrouter.ai/models">OpenRouterの場合はこちらからモデルを探せます</a><br><a href="https://ollama.com/search?c=cloud">Ollama Cloudの場合はこちらからモデルを探せます</a><br><a href="https://nano-gpt.com/api">NanoGPTの場合はこちらからモデルを探せます(下部)</a>',
     order: 3
   },
   YourName: {
