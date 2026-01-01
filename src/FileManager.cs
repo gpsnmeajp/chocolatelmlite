@@ -989,6 +989,7 @@ namespace CllDotnet
             return fileList;
         }
 
+        // 指定したペルソナidの会話履歴データベースを取得または作成する
         private SQLiteDB GetOrCreateTalkDb(int personaId)
         {
             if (activePersonaTalkDb != null && activePersonaTalkDbPersonaId == personaId)
