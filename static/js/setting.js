@@ -27,6 +27,7 @@ const assetState = assetConfig.reduce((acc, entry) => {
  */
 async function init() {
   setupAssetHandlers();
+  setupPostPromptControls();
   await Promise.all([loadSettings(), loadPersonaAssets(), loadGeneralSettings(), loadMemoryEntries()]);
 }
 
@@ -47,6 +48,8 @@ async function loadSettings() {
     const timerInput = document.getElementById('timerCycle');
     const webhookUrlInput = document.getElementById('webhookUrl');
     const webhookBodyInput = document.getElementById('webhookBody');
+    const enablePostPromptInput = document.getElementById('enablePostPrompt');
+    const postPromptInput = document.getElementById('postPrompt');
 
     // 各フィールドに値を設定
     if (displayInput) {
@@ -79,6 +82,16 @@ async function loadSettings() {
       webhookBodyInput.value = data?.webhook_body ?? '';
     }
 
+    if (enablePostPromptInput) {
+      enablePostPromptInput.checked = Boolean(data?.enable_post_prompt);
+    }
+
+    if (postPromptInput) {
+      postPromptInput.value = data?.post_prompt ?? '';
+    }
+
+    updatePostPromptState();
+
     // 変更検知用に元の値を保存
     originalSettings = {
       displayName: displayInput?.value ?? '',
@@ -86,12 +99,38 @@ async function loadSettings() {
       systemPrompt: systemInput?.value ?? '',
       timerCycle: timerInput?.value ?? '',
       webhookUrl: webhookUrlInput?.value ?? '',
-      webhookBody: webhookBodyInput?.value ?? ''
+      webhookBody: webhookBodyInput?.value ?? '',
+      enablePostPrompt: enablePostPromptInput?.checked ?? false,
+      postPrompt: postPromptInput?.value ?? ''
     };
   } catch (error) {
     console.error('Failed to load settings:', error);
     showAlertModal('設定の取得に失敗しました。(通信エラー)<br>通信環境を再確認し、再読み込みしてください。', { title: 'エラー' });
   }
+}
+
+function setupPostPromptControls() {
+  const toggle = document.getElementById('enablePostPrompt');
+  if (!toggle) {
+    return;
+  }
+
+  toggle.addEventListener('change', () => {
+    updatePostPromptState();
+  });
+
+  updatePostPromptState();
+}
+
+function updatePostPromptState() {
+  const toggle = document.getElementById('enablePostPrompt');
+  const textarea = document.getElementById('postPrompt');
+
+  if (!toggle || !textarea) {
+    return;
+  }
+
+  textarea.disabled = !toggle.checked;
 }
 
 /**
@@ -510,6 +549,8 @@ async function saveSettings() {
   payload.timer_cycle_minutes = timerCycleMinutes;
   payload.webhook_url = document.getElementById('webhookUrl')?.value ?? '';
   payload.webhook_body = document.getElementById('webhookBody')?.value ?? '';
+  payload.enable_post_prompt = document.getElementById('enablePostPrompt')?.checked ?? false;
+  payload.post_prompt = document.getElementById('postPrompt')?.value ?? '';
 
   try {
     // 二重送信を防ぐため、ボタンを無効化
@@ -537,7 +578,9 @@ async function saveSettings() {
       systemPrompt: payload.system_prompt,
       timerCycle: String(timerCycleMinutes),
       webhookUrl: payload.webhook_url,
-      webhookBody: payload.webhook_body
+      webhookBody: payload.webhook_body,
+      enablePostPrompt: payload.enable_post_prompt,
+      postPrompt: payload.post_prompt
     };
 
     // トーク画面に遷移
@@ -566,6 +609,8 @@ function goBack() {
   const timerInput = document.getElementById('timerCycle');
   const webhookUrlInput = document.getElementById('webhookUrl');
   const webhookBodyInput = document.getElementById('webhookBody');
+  const enablePostPromptInput = document.getElementById('enablePostPrompt');
+  const postPromptInput = document.getElementById('postPrompt');
 
   // 変更があるかどうかをチェック
   const hasChanges =
@@ -575,6 +620,8 @@ function goBack() {
     (timerInput?.value ?? '') !== originalSettings.timerCycle ||
     (webhookUrlInput?.value ?? '') !== originalSettings.webhookUrl ||
     (webhookBodyInput?.value ?? '') !== originalSettings.webhookBody ||
+    (enablePostPromptInput?.checked ?? false) !== originalSettings.enablePostPrompt ||
+    (postPromptInput?.value ?? '') !== originalSettings.postPrompt ||
     hasUnsavedAssetChanges();
 
   // 変更がある場合は確認ダイアログを表示

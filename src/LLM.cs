@@ -203,6 +203,19 @@ namespace CllDotnet
                         }
 
                         List<TalkEntry> mergedMessages = mergeRoleConsecutiveMessages(messages) ?? new List<TalkEntry>();
+
+                        // ポストプロンプトの追加(最終ユーザーメッセージを加工して追加する)
+                        string postPrompt = activePersonaSettings.EnablePostPrompt ? activePersonaSettings.PostPrompt : "";
+                        if (!string.IsNullOrWhiteSpace(postPrompt))
+                        {
+                            var lastUserMessage = mergedMessages.LastOrDefault(m => m.Role == TalkRole.User);
+                            if (lastUserMessage != null)
+                            {
+                                lastUserMessage.Text = $"<user>{lastUserMessage.Text}</user>\n<system>{postPrompt}</system>";
+                                MyLog.LogWrite($"ポストプロンプトを最終ユーザーメッセージに追加: {lastUserMessage.Text}");
+                            }
+                        }
+
                         List<ChatMessage> chatMessages = talkEntryListToChatMessageList(mergedMessages, systemprompt);
 
                         // デバッグ出力

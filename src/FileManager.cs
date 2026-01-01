@@ -18,6 +18,8 @@ namespace CllDotnet
         public int TimerCycleMinutes { get; set; } = 0;
         public string WebhookUrl { get; set; } = "";
         public string WebhookBody { get; set; } = "{\"content\":\"%text%\"}";
+        public bool EnablePostPrompt { get; set; } = false;
+        public string PostPrompt { get; set; } = "";
     }
 
     public class YamlMemory

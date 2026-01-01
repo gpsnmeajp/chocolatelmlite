@@ -52,6 +52,15 @@
           <textarea id="systemPrompt" rows="10" placeholder="アシスタントの役割や指示を入力...">あなたは親切で役立つアシスタントです。ユーザーの質問に丁寧に答えてください。</textarea>
         </div>
 
+        <div class="form-group">
+          <label>ポストプロンプト</label>
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin: 6px 0 10px 0;">
+            <input type="checkbox" id="enablePostPrompt"> 有効
+          </label>
+          <textarea id="postPrompt" rows="6" placeholder="例: 必ず口調を守ること..."></textarea>
+          <p class="form-hint">ユーザー発言の後に指示を埋め込みます。この指示は即効性を持ち強力に作用します。</p>
+        </div>
+
         <details class="advanced-settings">
           <summary>
             <span class="advanced-settings__icon">▶</span>
