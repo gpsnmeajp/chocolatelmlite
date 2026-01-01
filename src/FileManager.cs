@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -128,6 +129,7 @@ namespace CllDotnet
         private readonly string manageFilename = "manage.yaml";
         private readonly string systemPromptFilename = "system_prompt.txt";
         private readonly string talkJsonlFilename = "talk.jsonl";
+        private readonly string talkDbFilename = "talk.sqlite3";
         private readonly string memoryFilename = "memory.yaml";
         private readonly string mcpJsonFilename = "mcp.json";
 
@@ -135,6 +137,9 @@ namespace CllDotnet
         public YamlGeneral generalSettings { get; private set; }
 
         private List<TalkEntry> activePersonaTalkEntriesCache = new List<TalkEntry>();
+        private SQLiteDB? activePersonaTalkDb;
+        private int? activePersonaTalkDbPersonaId;
+        private readonly ConcurrentDictionary<int, SemaphoreSlim> talkLocks = new();
 
         // ディレクトリを再帰的にコピーする
         public static void CopyDirectory(string sourceDir, string destDir)
@@ -168,7 +173,7 @@ namespace CllDotnet
             // general.yamlを読み込んで保持
             generalSettings = LoadGeneralSettings();
 
-            // talk.jsonlの内容をキャッシュに読み込む
+            // 会話履歴をキャッシュに読み込む
             var activeId = GetActivePersonaId();
             if (activeId != null)
             {
@@ -314,13 +319,15 @@ namespace CllDotnet
                         var name = LoadYamlOrCreateNew<YamlPersona>(Path.Combine(dir, settingsFilename)).Name;
                         // 会話履歴ファイルのタイムスタンプを取得する
                         long? lastTimestamp = null;
+                        string talkDbPath = Path.Combine(dir, talkDbFilename);
                         string talkFilePath = Path.Combine(dir, talkJsonlFilename);
-                        if (File.Exists(talkFilePath))
+                        if (File.Exists(talkDbPath))
+                        {
+                            lastTimestamp = new DateTimeOffset(File.GetLastWriteTimeUtc(talkDbPath)).ToUnixTimeSeconds();
+                        }
+                        else if (File.Exists(talkFilePath))
                         {
                             lastTimestamp = new DateTimeOffset(File.GetLastWriteTimeUtc(talkFilePath)).ToUnixTimeSeconds();
-                        }else
-                        {
-                            lastTimestamp = null;
                         }
                         personaList.Add((id, name, lastTimestamp ?? 0));
                     }
@@ -361,9 +368,9 @@ namespace CllDotnet
             string systemPromptPath = Path.Combine(personaDir, systemPromptFilename);
             File.WriteAllText(systemPromptPath, "あなたは親切なアシスタントです。ユーザーの質問に丁寧に回答してください。");
 
-            // 空の会話履歴ファイルの作成
-            var talkFilePath = Path.Combine(personaDir, talkJsonlFilename);
-            File.WriteAllText(talkFilePath, "");
+            // 空の会話履歴データベースの作成
+            var talkDbPath = Path.Combine(personaDir, talkDbFilename);
+            _ = new SQLiteDB(talkDbPath, int.Parse(id));
 
             MyLog.LogWrite($"新しいペルソナフォルダを作成しました: {personaDir}");
             return id;
@@ -450,7 +457,7 @@ namespace CllDotnet
             manage.ActivePersonaId = id;
             SaveYaml(manage, managePath);
 
-            // talk.jsonlの内容をキャッシュに読み込む
+            // 会話履歴をキャッシュに読み込む
             var activeId = GetActivePersonaId();
             if (activeId != null)
             {
@@ -980,6 +987,23 @@ namespace CllDotnet
             return fileList;
         }
 
+        private SQLiteDB GetOrCreateTalkDb(int personaId)
+        {
+            if (activePersonaTalkDb != null && activePersonaTalkDbPersonaId == personaId)
+            {
+                return activePersonaTalkDb;
+            }
+
+            string personaDir = GetPersonaDirectoryById(personaId);
+            string talkDbPath = Path.Combine(personaDir, talkDbFilename);
+            string talkJsonlPath = Path.Combine(personaDir, talkJsonlFilename);
+
+            activePersonaTalkDb = new SQLiteDB(talkDbPath, personaId);
+            activePersonaTalkDb.MigrateFromJsonlIfExists(talkJsonlPath);
+            activePersonaTalkDbPersonaId = personaId;
+            return activePersonaTalkDb;
+        }
+
         // アクティブなペルソナの会話履歴のロックを取得してFuncを実行する。(取得できなければ待機する)
         public async Task<T> WithTalkHistoryLock<T>(Func<Task<T>> func, CancellationToken cancellationToken)
         {
@@ -989,60 +1013,17 @@ namespace CllDotnet
                 MyLog.LogWrite("アクティブなペルソナがありません");
                 throw new InvalidOperationException("アクティブなペルソナがありません");
             }
-            string personaDir = GetPersonaDirectoryById(activeId.Value);
-            string talkFilePath = Path.Combine(personaDir, talkJsonlFilename);
-            string lockFilePath = talkFilePath + ".lock";
-            bool lockAcquired = false;
 
-            for (int i = 0; i < 3; i++)
+            var semaphore = talkLocks.GetOrAdd(activeId.Value, _ => new SemaphoreSlim(1, 1));
+            await semaphore.WaitAsync(cancellationToken);
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                try
-                {
-                    // ロックファイルが存在する場合は待機
-                    if (File.Exists(lockFilePath))
-                    {
-                        MyLog.LogWrite("会話履歴ロックの取得を待機中...");
-                        while (File.Exists(lockFilePath))
-                        {
-                            await Task.Delay(100, cancellationToken);
-                            cancellationToken.ThrowIfCancellationRequested();
-                        }
-                        MyLog.LogWrite("会話履歴ロックの取得待機終了");
-                    }
-
-                    // ロックファイルを作成してロックを取得
-                    using (var lockFile = new FileStream(lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
-                    {
-                        try
-                        {
-                            // Funcを実行
-                            MyLog.LogWrite("会話履歴ロックを取得しました");
-                            lockAcquired = true;
-                            return await func();
-                        }
-                        finally
-                        {
-                            // ロックファイルを閉じて削除
-                            lockFile.Close();
-                        }
-                    }
-                }
-                catch (IOException ex)
-                {
-                    MyLog.LogWrite($"会話履歴ロックの取得に失敗しました: {ex.Message} {ex.StackTrace} 再試行します...");
-                    await Task.Delay(100, cancellationToken);
-                }finally
-                {
-                    // ロックファイルが存在する場合は削除
-                    if (File.Exists(lockFilePath) && lockAcquired)
-                    {
-                        File.Delete(lockFilePath);
-                        MyLog.LogWrite("会話履歴ロックファイルを削除しました");
-                    }
-                }
+                return await func();
             }
-            throw new InvalidOperationException("会話履歴ロックの取得に連続で失敗しました。");
+            finally
+            {
+                semaphore.Release();
+            }
         }
 
         // アクティブなペルソナの会話履歴を全件取得する。存在しなければ空リストを返す。
@@ -1054,40 +1035,11 @@ namespace CllDotnet
                 MyLog.LogWrite("アクティブなペルソナがありません");
                 throw new InvalidOperationException("アクティブなペルソナがありません");
             }
-            string personaDir = GetPersonaDirectoryById(activeId.Value);
-            string talkFilePath = Path.Combine(personaDir, talkJsonlFilename);
-            if (!File.Exists(talkFilePath))
-            {
-                MyLog.LogWrite("会話履歴ファイルが存在しません");
-                return new List<TalkEntry>();
-            }
 
-            var allLines = File.ReadAllLines(talkFilePath);
-            var result = new List<TalkEntry>();
-            MyLog.LogWrite($"会話履歴ファイルの行数: {allLines.Length}");
-
-            foreach (var line in allLines)
-            {
-                try
-                {
-                    var entry = JsonSerializer.Deserialize<TalkEntry>(line, new JsonSerializerOptions
-                    {
-                        Converters =
-                        {
-                            new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
-                        }
-                    });
-                    if (entry != null)
-                    {
-                        result.Add(entry);
-                    }
-                }
-                catch
-                {
-                    MyLog.LogWrite($"会話履歴のデシリアライズに失敗しました。該当行をスキップします。 Line: {line}");
-                }
-            }
-            return result;
+            var db = GetOrCreateTalkDb(activeId.Value);
+            activePersonaTalkEntriesCache = db.GetAllTalkEntries();
+            MyLog.LogWrite($"アクティブなペルソナの会話履歴をデータベースから取得: {activePersonaTalkEntriesCache.Count}件");
+            return activePersonaTalkEntriesCache;
         }
 
         // アクティブなペルソナの会話履歴を全件取得する。存在しなければ空リストを返す。(キャッシュを使用)
@@ -1150,75 +1102,12 @@ namespace CllDotnet
                 throw new InvalidOperationException("アクティブなペルソナがありません。会話履歴の追加/更新に失敗しました。");
             }
 
-            var activePersonaDir = GetPersonaDirectoryById(activeId.Value);
-            var talkFilePath = Path.Combine(activePersonaDir, talkJsonlFilename);
+            var db = GetOrCreateTalkDb(activeId.Value);
+            var uuid = db.UpsertTalkEntry(message);
 
-            if (message.Uuid == Guid.Empty)
-            {
-                // メッセージにuuidを追加する
-                message.Uuid = Guid.NewGuid();
-
-                // uuidが既存のメッセージと重複しないようにする(編集時に事故になるため)
-                var existingMessages = activePersonaTalkEntriesCache;
-                while (existingMessages.Any(m => m.Uuid == message.Uuid))
-                {
-                    message.Uuid = Guid.NewGuid();
-                }
-
-                // 新規追加はファイルの末尾に追加するだけで良い
-                using (var writer = new StreamWriter(talkFilePath, append: true, new UTF8Encoding(false)))
-                {
-                    var line = Serializer.JsonSerialize(message, false);
-                    writer.WriteLine(line);
-                    writer.Flush();
-                    MyLog.LogWrite($"アクティブなペルソナの会話履歴にメッセージを追加しました。 UUID: {message.Uuid}");
-                }
-            }
-            else
-            {
-                var messages = activePersonaTalkEntriesCache;
-                var lastEntry = GetLastTalkEntryFromActivePersona();
-
-                // 最後のエントリ以外が対象の場合、会話履歴をすべて取得し直す
-                if (lastEntry != null && lastEntry.Uuid != message.Uuid)
-                {
-                    // 会話履歴を取得(安全のためキャッシュは使わない)
-                    messages = GetAllTalkHistoryAllFromActivePersona();
-                }
-
-                // 更新
-                var index = messages.FindIndex(m => m.Uuid == message.Uuid);
-                if (index != -1)
-                {
-                    // 指定されたuuidのメッセージを更新
-                    messages[index] = message;
-
-                    // これ以降のメッセージが存在する場合は全部削除する。
-                    messages = messages.Take(index + 1).ToList();
-
-                    // 全体をjsonl形式で保存し直す
-                    using (var writer = new StreamWriter(talkFilePath, append: false, new UTF8Encoding(false)))
-                    {
-                        foreach (var msg in messages)
-                        {
-                            var line = Serializer.JsonSerialize(msg, false);
-                            writer.WriteLine(line);
-                        }
-                        writer.Flush();
-                        MyLog.LogWrite($"アクティブなペルソナの会話履歴のメッセージを更新しました。 UUID: {message.Uuid}");
-                    }
-                }
-                else
-                {
-                    // idが見つからなかった場合は失敗
-                    MyLog.LogWrite($"アクティブなペルソナの会話履歴の更新に失敗しました。検索異常。");
-                    return Guid.Empty;
-                }
-            }
-
-            // キャッシュを更新
-            activePersonaTalkEntriesCache = GetAllTalkHistoryAllFromActivePersona();
-            return message.Uuid;
+            activePersonaTalkEntriesCache = db.GetAllTalkEntries();
+            MyLog.LogWrite($"アクティブなペルソナの会話履歴を更新: UUID={uuid}");
+            return uuid;
         }
 
         // アクティブなペルソナの会話統計を取得する
