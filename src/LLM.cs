@@ -226,6 +226,17 @@ namespace CllDotnet
                             MyLog.LogWrite($"キーワードナレッジを最終ユーザーメッセージに追加: {keywordKnowledge}");
                         }
 
+                        // 現在時刻を追加(タイムスタンプが無効な場合のみ)
+                        if (fileManager.generalSettings.EnableCurrentTime && !fileManager.generalSettings.EnableTimestamps)
+                        {
+                            // タイムゾーンからローカル現在時刻を取得
+                            var timeZone = fileManager.GetTimeZoneInfo();
+                            var localTime = TimeZoneInfo.ConvertTime(DateTime.UtcNow, timeZone);
+                            string datetimeString = localTime.ToString("yyyy-MM-dd (ddd) HH:mm:ss");
+                            lastUserMessage.Text += $"\n<current_time>{datetimeString} ({timeZone.Id})</current_time>";
+                            MyLog.LogWrite($"現在時刻を最終ユーザーメッセージに追加: {datetimeString} ({timeZone.Id})");
+                        }
+
                         List<ChatMessage> chatMessages = talkEntryListToChatMessageList(mergedMessages, systemprompt);
 
                         // デバッグ出力

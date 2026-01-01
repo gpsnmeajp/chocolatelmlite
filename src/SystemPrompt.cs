@@ -51,16 +51,6 @@ namespace CllDotnet
                 }
             }
 
-            // 現在時刻を追加(タイムスタンプが無効な場合のみ:キャッシュ対策)
-            if (generalSettings.EnableCurrentTime && !generalSettings.EnableTimestamps)
-            {
-                // タイムゾーンからローカル現在時刻を取得
-                var timeZone = fileManager.GetTimeZoneInfo();
-                var localTime = TimeZoneInfo.ConvertTime(DateTime.UtcNow, timeZone);
-                string datetimeString = localTime.ToString("yyyy-MM-dd (ddd) HH:mm:ss");
-                additionalInfo += $"\n\n<current_time>{datetimeString} ({timeZone.Id})</current_time>";
-            }
-
             if (additionalInfo.Length > 0)
             {
                 systemPrompt += $"\n\n<system>{additionalInfo}</system>";
