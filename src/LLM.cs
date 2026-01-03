@@ -205,26 +205,20 @@ namespace CllDotnet
                         List<TalkEntry> mergedMessages = mergeRoleConsecutiveMessages(messages) ?? new List<TalkEntry>();
 
                         var lastUserMessage = mergedMessages.LastOrDefault(m => m.Role == TalkRole.User);
+                        
                         if (lastUserMessage == null)
                         {
                             throw new Exception("最後のユーザーメッセージが見つかりません。");
                         }
 
-                        // ポストプロンプトの追加(最終ユーザーメッセージを加工して追加する)
-                        string postPrompt = activePersonaSettings.EnablePostPrompt ? activePersonaSettings.PostPrompt : "";
-                        if (!string.IsNullOrWhiteSpace(postPrompt))
-                        {
-                            lastUserMessage.Text = $"<user>{lastUserMessage.Text}</user>\n<system>{postPrompt}</system>";
-                            MyLog.LogWrite($"ポストプロンプトを最終ユーザーメッセージに追加: {lastUserMessage.Text}");
-                        }
+                        string lastUserText = $"{lastUserMessage.Text}"; // このあとの処理でユーザー入力文字列が必要なため
+                        string builtUserMessageHeader = ""; // ユーザーメッセージに追加する文字列のヘッダー部分
 
-                        // キーワードナレッジを取得して必要に応じて利用する
-                        var keywordKnowledge = BuildKeywordKnowledgeSnippet(lastUserMessage.Text);
-                        if (!string.IsNullOrWhiteSpace(keywordKnowledge))
-                        {
-                            lastUserMessage.Text = $"{lastUserMessage.Text}{keywordKnowledge}";
-                            MyLog.LogWrite($"キーワードナレッジを最終ユーザーメッセージに追加: {keywordKnowledge}");
-                        }
+                        // <current_time>現在時刻</current_time>
+                        // <knowledge key="キーワード">ナレッジ内容</knowledge>
+                        // <context>Dynamic Context</context>
+                        // <user>ユーザー発言</user>
+                        // <system>ポストプロンプト</system> ← 必ずこの位置とする
 
                         // 現在時刻を追加(タイムスタンプが無効な場合のみ)
                         if (fileManager.generalSettings.EnableCurrentTime && !fileManager.generalSettings.EnableTimestamps)
@@ -233,9 +227,44 @@ namespace CllDotnet
                             var timeZone = fileManager.GetTimeZoneInfo();
                             var localTime = TimeZoneInfo.ConvertTime(DateTime.UtcNow, timeZone);
                             string datetimeString = localTime.ToString("yyyy-MM-dd (ddd) HH:mm:ss");
-                            lastUserMessage.Text += $"\n<current_time>{datetimeString} ({timeZone.Id})</current_time>";
+                            builtUserMessageHeader += $"<current_time>{datetimeString} ({timeZone.Id})</current_time>\n";
                             MyLog.LogWrite($"現在時刻を最終ユーザーメッセージに追加: {datetimeString} ({timeZone.Id})");
                         }
+
+                        // キーワードナレッジを取得して必要に応じて利用する
+                        var keywordKnowledge = BuildKeywordKnowledgeSnippet(lastUserText);
+                        if (!string.IsNullOrWhiteSpace(keywordKnowledge))
+                        {
+                            builtUserMessageHeader += $"{keywordKnowledge}"; // 改行文字は必要に合わせてキーワードナレッジ側で付与している
+                            MyLog.LogWrite($"キーワードナレッジを最終ユーザーメッセージに追加: {keywordKnowledge}");
+                        }
+
+
+                        // Dynamic Contextの適用(最新ユーザー発言を外部にPOSTして追記)
+                        if (activePersonaSettings.EnableDynamicContext && !string.IsNullOrWhiteSpace(activePersonaSettings.DynamicContextUrl))
+                        {
+                            var dynamicContext = await BuildDynamicContextAsync(lastUserText, activePersonaSettings.DynamicContextUrl, cancellationToken);
+                            if (!string.IsNullOrWhiteSpace(dynamicContext))
+                            {
+                                builtUserMessageHeader += $"<context>{dynamicContext}</context>\n";
+                                MyLog.LogWrite("DynamicContextを最終ユーザーメッセージに追加しました。");
+                            }
+                        }
+
+                        // ポストプロンプトの追加(最終ユーザーメッセージを加工して追加する)
+                        string postPrompt = activePersonaSettings.EnablePostPrompt ? activePersonaSettings.PostPrompt : "";
+                        if (!string.IsNullOrWhiteSpace(postPrompt))
+                        {
+                            // ポストプロンプトがある場合は、<system>タグで囲んで追加
+                            lastUserMessage.Text = $"{builtUserMessageHeader}<user>{lastUserText}</user>\n<system>{postPrompt}</system>";
+                            MyLog.LogWrite($"ポストプロンプトを最終ユーザーメッセージに追加");
+                        }
+                        else
+                        {
+                            // ポストプロンプトが無い場合は、builtUserMessageのみ追加
+                            lastUserMessage.Text = $"{builtUserMessageHeader}{lastUserText}";
+                        }
+                        MyLog.LogWrite($"最終ユーザーメッセージの構築完了\n{lastUserMessage.Text}");
 
                         List<ChatMessage> chatMessages = talkEntryListToChatMessageList(mergedMessages, systemprompt);
 
@@ -641,11 +670,62 @@ namespace CllDotnet
                 }
 
                 MyLog.LogWrite($"一致したナレッジ: {string.Join(", ", matchedKeywords)}");
-                return "\n"+string.Join("\n", knowledgeSnippets);
+                return string.Join("\n", knowledgeSnippets)+ "\n";
             }
             catch (Exception ex)
             {
                 MyLog.LogWrite($"キーワードナレッジの適用に失敗しました: {ex.Message} {ex.StackTrace}");
+                return string.Empty;
+            }
+        }
+
+        // Dynamic Contextの取得と構築
+        private async Task<string> BuildDynamicContextAsync(string userText, string dynamicContextUrl, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(dynamicContextUrl) || string.IsNullOrWhiteSpace(userText))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                // HTTPクライアントの作成
+                using var httpClient = new HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(fileManager.generalSettings.TimeoutSeconds);
+
+                // POSTリクエストの送信
+                var payload = new { text = userText };
+                var json = Serializer.JsonSerialize(payload, false);
+                using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+                MyLog.LogWrite($"DynamicContextを送信: URL={dynamicContextUrl}");
+                using var response = await httpClient.PostAsync(dynamicContextUrl, content, cancellationToken);
+                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    MyLog.LogWrite($"DynamicContext取得に失敗しました: StatusCode={(int)response.StatusCode} Body={responseBody}");
+                    return string.Empty;
+                }
+
+                var trimmed = (responseBody ?? string.Empty).Trim();
+                if (string.IsNullOrEmpty(trimmed))
+                {
+                    MyLog.LogWrite("DynamicContextの応答が空でした。");
+                    return string.Empty;
+                }
+
+                MyLog.LogWrite($"DynamicContextの応答を取得: {trimmed.Length}文字");
+                return trimmed;
+            }
+            catch (TaskCanceledException)
+            {
+                MyLog.LogWrite("DynamicContextの取得がタイムアウトまたはキャンセルされました。");
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                MyLog.LogWrite($"DynamicContextの取得で例外: {ex.Message} {ex.StackTrace}");
                 return string.Empty;
             }
         }

@@ -75,6 +75,21 @@
           <textarea id="postPrompt" rows="6" placeholder="例: 必ず丁寧な口調で答えること..."></textarea>
         </div>
 
+        <div class="info-message">
+          🌐 <strong>Dynamic Context:</strong><br>
+          最新のユーザー発言を外部URLへPOSTし、応答を&lt;context&gt;タグで追記します。<br>
+          外部システムの情報をリアルタイムに反映させたい場合に有効です。<br>
+          応答は会話履歴に残らず、その生成時だけLLMに渡されます。API仕様は説明書を参照してください。<br>
+        </div>
+        <div class="form-group">
+          <label>Dynamic Context</label>
+          <p class="form-hint">外部サービスで動的コンテキストを生成する場合に指定します。</p>
+          <label class="checkbox-label">
+            <input type="checkbox" id="enableDynamicContext"> 有効
+          </label>
+          <input type="url" id="dynamicContextUrl" value="" placeholder="http://127.0.0.1:5000/dynamic-context ...">
+        </div>
+
         <details class="advanced-settings">
           <summary>
             <span class="advanced-settings__icon">▶</span>

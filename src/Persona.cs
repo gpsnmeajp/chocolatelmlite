@@ -650,6 +650,17 @@ namespace CllDotnet
                 personaSettings.PostPrompt = postPromptElement.GetString() ?? "";
             }
 
+            if (content.TryGetValue("enable_dynamic_context", out var enableDynamicContextElement) &&
+                (enableDynamicContextElement.ValueKind == JsonValueKind.True || enableDynamicContextElement.ValueKind == JsonValueKind.False))
+            {
+                personaSettings.EnableDynamicContext = enableDynamicContextElement.GetBoolean();
+            }
+
+            if (content.TryGetValue("dynamic_context_url", out var dynamicContextUrlElement) && dynamicContextUrlElement.ValueKind == JsonValueKind.String)
+            {
+                personaSettings.DynamicContextUrl = dynamicContextUrlElement.GetString() ?? "";
+            }
+
             fileManager.SaveActivePersonaSettings(personaSettings);
 
             if (content.ContainsKey("system_prompt") && content["system_prompt"].ValueKind == JsonValueKind.String)
@@ -675,6 +686,8 @@ namespace CllDotnet
                 result["webhook_body"] = settings.WebhookBody;
                 result["enable_post_prompt"] = settings.EnablePostPrompt;
                 result["post_prompt"] = settings.PostPrompt;
+                result["enable_dynamic_context"] = settings.EnableDynamicContext;
+                result["dynamic_context_url"] = settings.DynamicContextUrl;
                 result["system_prompt"] = system_prompt ?? "";
             }
             return result;

@@ -32,6 +32,7 @@ const assetState = assetConfig.reduce((acc, entry) => {
 async function init() {
   setupAssetHandlers();
   setupPostPromptControls();
+  setupDynamicContextControls();
   setupKeywordKnowledgeControls();
   await Promise.all([loadSettings(), loadPersonaAssets(), loadGeneralSettings(), loadKeywordKnowledgeEntries(), loadMemoryEntries()]);
 }
@@ -55,6 +56,8 @@ async function loadSettings() {
     const webhookBodyInput = document.getElementById('webhookBody');
     const enablePostPromptInput = document.getElementById('enablePostPrompt');
     const postPromptInput = document.getElementById('postPrompt');
+    const enableDynamicContextInput = document.getElementById('enableDynamicContext');
+    const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
 
     // 各フィールドに値を設定
     if (displayInput) {
@@ -95,7 +98,17 @@ async function loadSettings() {
       postPromptInput.value = data?.post_prompt ?? '';
     }
 
+    if (enableDynamicContextInput) {
+      enableDynamicContextInput.checked = Boolean(data?.enable_dynamic_context);
+    }
+
+    if (dynamicContextUrlInput) {
+      dynamicContextUrlInput.value = data?.dynamic_context_url ?? '';
+    }
+
     updatePostPromptState();
+    // DynamicContext機能のUIの状態を更新（有効/無効に応じてURL入力欄の活性/非活性を切り替え）
+    updateDynamicContextState();
 
     // 変更検知用に元の値を保存
     originalSettings = {
@@ -106,7 +119,11 @@ async function loadSettings() {
       webhookUrl: webhookUrlInput?.value ?? '',
       webhookBody: webhookBodyInput?.value ?? '',
       enablePostPrompt: enablePostPromptInput?.checked ?? false,
-      postPrompt: postPromptInput?.value ?? ''
+      postPrompt: postPromptInput?.value ?? '',
+      // DynamicContext機能の有効/無効状態を保存（変更検知に使用）
+      enableDynamicContext: enableDynamicContextInput?.checked ?? false,
+      // DynamicContextのURL設定を保存（変更検知に使用）
+      dynamicContextUrl: dynamicContextUrlInput?.value ?? ''
     };
   } catch (error) {
     console.error('Failed to load settings:', error);
@@ -136,6 +153,66 @@ function updatePostPromptState() {
   }
 
   textarea.disabled = !toggle.checked;
+}
+
+/**
+ * DynamicContext（動的コンテキスト）機能のUI制御を初期化する
+ *
+ * この関数は以下の処理を行います：
+ * 1. DynamicContext機能の有効/無効を切り替えるチェックボックスを取得
+ * 2. チェックボックスの状態変更イベントリスナーを設定
+ * 3. 初期表示時のUI状態を更新
+ *
+ * DynamicContext機能は、LLMとの会話時に外部APIから動的にコンテキスト情報を取得し、
+ * システムプロンプトに追加する機能です。例えば、現在時刻や天気情報など、
+ * 実行時に変化する情報をリアルタイムに会話に組み込むことができます。
+ */
+function setupDynamicContextControls() {
+  // DynamicContext機能の有効/無効切り替え用のチェックボックス要素を取得
+  const toggle = document.getElementById('enableDynamicContext');
+  // 要素が見つからない場合は処理を中断
+  if (!toggle) {
+    return;
+  }
+
+  // チェックボックスの状態が変更されたときのイベントリスナーを登録
+  // チェックのON/OFFに応じてURL入力欄の有効/無効を切り替える
+  toggle.addEventListener('change', () => {
+    updateDynamicContextState();
+  });
+
+  // 初期表示時のUI状態を設定（チェックボックスの現在の状態に基づいてURL入力欄を有効化/無効化）
+  updateDynamicContextState();
+}
+
+/**
+ * DynamicContext機能のUI状態を更新する
+ *
+ * この関数は、DynamicContext機能の有効/無効チェックボックスの状態に応じて、
+ * URL入力欄の有効化/無効化を制御します。
+ *
+ * 動作仕様：
+ * - チェックボックスがONの場合：URL入力欄を有効化（編集可能）
+ * - チェックボックスがOFFの場合：URL入力欄を無効化（グレーアウト、編集不可）
+ *
+ * これにより、DynamicContext機能を使用しない場合に誤ってURLを入力することを防ぎ、
+ * UIの使い勝手を向上させます。
+ */
+function updateDynamicContextState() {
+  // DynamicContext機能の有効/無効切り替え用チェックボックスを取得
+  const toggle = document.getElementById('enableDynamicContext');
+  // DynamicContextで使用する外部APIのURLを入力するテキストボックスを取得
+  const urlInput = document.getElementById('dynamicContextUrl');
+
+  // いずれかの要素が見つからない場合は処理を中断
+  if (!toggle || !urlInput) {
+    return;
+  }
+
+  // チェックボックスの状態に応じてURL入力欄の有効/無効を切り替え
+  // toggle.checked が true（チェックON）の場合は disabled = false（有効化）
+  // toggle.checked が false（チェックOFF）の場合は disabled = true（無効化）
+  urlInput.disabled = !toggle.checked;
 }
 
 /**
@@ -991,6 +1068,8 @@ async function saveSettings() {
   payload.webhook_body = document.getElementById('webhookBody')?.value ?? '';
   payload.enable_post_prompt = document.getElementById('enablePostPrompt')?.checked ?? false;
   payload.post_prompt = document.getElementById('postPrompt')?.value ?? '';
+  payload.enable_dynamic_context = document.getElementById('enableDynamicContext')?.checked ?? false;
+  payload.dynamic_context_url = document.getElementById('dynamicContextUrl')?.value ?? '';
 
   try {
     // 二重送信を防ぐため、ボタンを無効化
@@ -1020,7 +1099,9 @@ async function saveSettings() {
       webhookUrl: payload.webhook_url,
       webhookBody: payload.webhook_body,
       enablePostPrompt: payload.enable_post_prompt,
-      postPrompt: payload.post_prompt
+      postPrompt: payload.post_prompt,
+      enableDynamicContext: payload.enable_dynamic_context,
+      dynamicContextUrl: payload.dynamic_context_url
     };
 
     // トーク画面に遷移
@@ -1051,6 +1132,8 @@ function goBack() {
   const webhookBodyInput = document.getElementById('webhookBody');
   const enablePostPromptInput = document.getElementById('enablePostPrompt');
   const postPromptInput = document.getElementById('postPrompt');
+  const enableDynamicContextInput = document.getElementById('enableDynamicContext');
+  const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
 
   // 変更があるかどうかをチェック
   const hasChanges =
@@ -1062,6 +1145,8 @@ function goBack() {
     (webhookBodyInput?.value ?? '') !== originalSettings.webhookBody ||
     (enablePostPromptInput?.checked ?? false) !== originalSettings.enablePostPrompt ||
     (postPromptInput?.value ?? '') !== originalSettings.postPrompt ||
+    (enableDynamicContextInput?.checked ?? false) !== originalSettings.enableDynamicContext ||
+    (dynamicContextUrlInput?.value ?? '') !== originalSettings.dynamicContextUrl ||
     hasUnsavedAssetChanges();
 
   // 変更がある場合は確認ダイアログを表示

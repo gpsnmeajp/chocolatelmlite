@@ -20,6 +20,8 @@ namespace CllDotnet
         public string WebhookBody { get; set; } = "{\"content\":\"%text%\"}";
         public bool EnablePostPrompt { get; set; } = false;
         public string PostPrompt { get; set; } = "";
+        public bool EnableDynamicContext { get; set; } = false;
+        public string DynamicContextUrl { get; set; } = "";
     }
 
     public class YamlKeywordKnowledge
