@@ -83,6 +83,7 @@ namespace CllDotnet
         public bool EnableCurrentTime { get; set; } = true;
         public bool EnableStatisticsAndBreakReminder { get; set; } = true;
         public bool EnableWebhook { get; set; } = false;
+        public bool EnableDynamicContext { get; set; } = false;
         public bool EnableAutoUpdateCheck { get; set; } = true;
         public bool EnableConsoleMonitor { get; set; } = true;
         public bool EnableTimerGenerate { get; set; } = false;

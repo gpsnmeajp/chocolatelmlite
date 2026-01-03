@@ -258,7 +258,9 @@ namespace CllDotnet
 
 
                         // Dynamic Contextの適用(最新ユーザー発言を外部にPOSTして追記)
-                        if (activePersonaSettings.EnableDynamicContext && !string.IsNullOrWhiteSpace(activePersonaSettings.DynamicContextUrl))
+                        if (fileManager.generalSettings.EnableDynamicContext && // 全体設定でDynamic Contextが有効
+                            activePersonaSettings.EnableDynamicContext && // ペルソナ設定でDynamic Contextが有効
+                            !string.IsNullOrWhiteSpace(activePersonaSettings.DynamicContextUrl))
                         {
                             var dynamicContext = await BuildDynamicContextAsync(lastUserText, activePersonaSettings.DynamicContextUrl, cancellationToken);
                             if (!string.IsNullOrWhiteSpace(dynamicContext))

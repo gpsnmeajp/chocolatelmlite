@@ -238,6 +238,12 @@ const FIELD_DEFINITIONS = {
     order: 213,
     note: ''
   },
+  EnableDynamicContext: {
+    label: '動的コンテキストを有効化',
+    description: 'ユーザーの発言などをペルソナ設定画面で指定したURLに送信し、応答をコンテキストに挿入します。',
+    valueType: 'boolean',
+    order: 214
+  },
   EnableImageGeneration: {
     label: '画像生成を有効化',
     description: '画像生成LLMプロバイダーを使用して画像を生成します。利用には対応したエンドポイントとAPIキーが必要です。',

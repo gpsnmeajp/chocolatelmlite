@@ -221,6 +221,9 @@ namespace CllDotnet
                     case "EnableWebhook":
                         settings.EnableWebhook = kvp.Value.GetBoolean();
                         break;
+                    case "EnableDynamicContext":
+                        settings.EnableDynamicContext = kvp.Value.GetBoolean();
+                        break;
                     case "EnableAutoUpdateCheck":
                         settings.EnableAutoUpdateCheck = kvp.Value.GetBoolean();
                         break;
