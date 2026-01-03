@@ -52,6 +52,12 @@ body {
   padding: 8px;
 }
 
+.gametalk-btn {
+  position: absolute;
+  right: 64px;
+  padding: 8px;
+}
+
 .settings-btn {
   position: absolute;
   right: 16px;
