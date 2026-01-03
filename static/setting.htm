@@ -102,7 +102,9 @@
               🎣 <strong>Webhook:</strong><br>
               最新のペルソナ発言を外部URLへPOSTします。<br>
               外部システムやDiscordなどに情報をリアルタイムに反映させたい場合に有効です。<br>
-              API仕様は説明書を参照してください。<br>
+              ・%text%と記載した箇所が本文に置換されます。<br>
+              ・%id%と記載した箇所がペルソナIDに置換されます。<br>
+              ・%name%と記載した箇所がペルソナ名に置換されます。<br>
             </div>
 
             <div class="form-group">
@@ -113,7 +115,7 @@
             <div class="form-group">
               <label>Webhook本文</label>
               <textarea id="webhookBody" rows="5"></textarea>
-              <p class="form-hint">POSTで送信されます。%text%と記載した箇所が本文に置換されます。(URLか本文が空欄の場合は送信されません)</p>
+              <p class="form-hint">POSTで送信されます。(URLか本文が空欄の場合は送信されません)</p>
             </div>
 
             <div class="info-message">

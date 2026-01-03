@@ -443,6 +443,8 @@ namespace CllDotnet
                                     {
                                         var webhookBody = activePersonaSettings.WebhookBody ?? "";
                                         webhookBody = webhookBody.Replace("%text%", Serializer.JsonSerialize<string>(finalResponseText, false).Replace("\"", ""));
+                                        webhookBody = webhookBody.Replace("%id%", Serializer.JsonSerialize<string>(activePersonaId.ToString(), false).Replace("\"", ""));
+                                        webhookBody = webhookBody.Replace("%name%", Serializer.JsonSerialize<string>(activePersonaSettings.Name ?? "", false).Replace("\"", ""));
                                         MyLog.LogWrite($"Webhook送信準備: URL={activePersonaSettings.WebhookUrl} Body={webhookBody}");
 
                                         using var httpClient = new HttpClient();
