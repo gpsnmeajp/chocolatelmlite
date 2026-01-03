@@ -129,6 +129,9 @@
                 <input type="checkbox" id="enableDynamicContext"> 有効
               </label>
               <input type="url" id="dynamicContextUrl" value="" placeholder="http://127.0.0.1:5000/dynamic-context ...">
+              <label class="stacked-label" for="dynamicContextHistoryTurns">送信する履歴ターン数</label>
+              <input type="number" id="dynamicContextHistoryTurns" value="8" min="0" step="1" placeholder="8">
+              <p class="form-hint">直近のユーザー/アシスタント応答を何ターン分送るかを指定します。(0で履歴なし)</p>
             </div>
           </div>
         </details>

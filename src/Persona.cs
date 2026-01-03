@@ -659,6 +659,11 @@ namespace CllDotnet
                 personaSettings.EnableDynamicContext = enableDynamicContextElement.GetBoolean();
             }
 
+            if (content.ContainsKey("dynamic_context_history_turns") && content["dynamic_context_history_turns"].ValueKind == JsonValueKind.Number)
+            {
+                personaSettings.DynamicContextHistoryTurns = content["dynamic_context_history_turns"].GetInt32();
+            }
+
             if (content.TryGetValue("dynamic_context_url", out var dynamicContextUrlElement) && dynamicContextUrlElement.ValueKind == JsonValueKind.String)
             {
                 personaSettings.DynamicContextUrl = dynamicContextUrlElement.GetString() ?? "";
@@ -691,6 +696,7 @@ namespace CllDotnet
                 result["post_prompt"] = settings.PostPrompt;
                 result["enable_dynamic_context"] = settings.EnableDynamicContext;
                 result["dynamic_context_url"] = settings.DynamicContextUrl;
+                result["dynamic_context_history_turns"] = settings.DynamicContextHistoryTurns;
                 result["system_prompt"] = system_prompt ?? "";
             }
             return result;

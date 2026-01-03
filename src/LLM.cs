@@ -269,7 +269,7 @@ namespace CllDotnet
                                 lastUserText,
                                 activePersonaSettings.DynamicContextUrl,
                                 mergedMessages,
-                                8,
+                                activePersonaSettings.DynamicContextHistoryTurns,
                                 activePersonaId,
                                 activePersonaName,
                                 cancellationToken);

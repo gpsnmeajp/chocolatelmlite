@@ -22,6 +22,7 @@ namespace CllDotnet
         public string PostPrompt { get; set; } = "";
         public bool EnableDynamicContext { get; set; } = false;
         public string DynamicContextUrl { get; set; } = "";
+        public int DynamicContextHistoryTurns { get; set; } = 8;
     }
 
     public class YamlKeywordKnowledge

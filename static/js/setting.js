@@ -58,6 +58,7 @@ async function loadSettings() {
     const postPromptInput = document.getElementById('postPrompt');
     const enableDynamicContextInput = document.getElementById('enableDynamicContext');
     const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
+    const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
 
     // 各フィールドに値を設定
     if (displayInput) {
@@ -106,6 +107,12 @@ async function loadSettings() {
       dynamicContextUrlInput.value = data?.dynamic_context_url ?? '';
     }
 
+    if (dynamicContextHistoryTurnsInput) {
+      const raw = data?.dynamic_context_history_turns;
+      const parsed = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number.parseInt(raw, 10);
+      dynamicContextHistoryTurnsInput.value = Number.isFinite(parsed) && parsed >= 0 ? parsed : 8;
+    }
+
     updatePostPromptState();
     // DynamicContext機能のUIの状態を更新（有効/無効に応じてURL入力欄の活性/非活性を切り替え）
     updateDynamicContextState();
@@ -123,7 +130,8 @@ async function loadSettings() {
       // DynamicContext機能の有効/無効状態を保存（変更検知に使用）
       enableDynamicContext: enableDynamicContextInput?.checked ?? false,
       // DynamicContextのURL設定を保存（変更検知に使用）
-      dynamicContextUrl: dynamicContextUrlInput?.value ?? ''
+      dynamicContextUrl: dynamicContextUrlInput?.value ?? '',
+      dynamicContextHistoryTurns: dynamicContextHistoryTurnsInput?.value ?? ''
     };
   } catch (error) {
     console.error('Failed to load settings:', error);
@@ -170,6 +178,7 @@ function updatePostPromptState() {
 function setupDynamicContextControls() {
   // DynamicContext機能の有効/無効切り替え用のチェックボックス要素を取得
   const toggle = document.getElementById('enableDynamicContext');
+  const turnsInput = document.getElementById('dynamicContextHistoryTurns');
   // 要素が見つからない場合は処理を中断
   if (!toggle) {
     return;
@@ -180,6 +189,10 @@ function setupDynamicContextControls() {
   toggle.addEventListener('change', () => {
     updateDynamicContextState();
   });
+
+  if (turnsInput) {
+    turnsInput.addEventListener('input', () => setTurnsWithinBounds(turnsInput));
+  }
 
   // 初期表示時のUI状態を設定（チェックボックスの現在の状態に基づいてURL入力欄を有効化/無効化）
   updateDynamicContextState();
@@ -203,16 +216,29 @@ function updateDynamicContextState() {
   const toggle = document.getElementById('enableDynamicContext');
   // DynamicContextで使用する外部APIのURLを入力するテキストボックスを取得
   const urlInput = document.getElementById('dynamicContextUrl');
+  const turnsInput = document.getElementById('dynamicContextHistoryTurns');
 
   // いずれかの要素が見つからない場合は処理を中断
-  if (!toggle || !urlInput) {
+  if (!toggle || !urlInput || !turnsInput) {
     return;
   }
 
   // チェックボックスの状態に応じてURL入力欄の有効/無効を切り替え
   // toggle.checked が true（チェックON）の場合は disabled = false（有効化）
   // toggle.checked が false（チェックOFF）の場合は disabled = true（無効化）
-  urlInput.disabled = !toggle.checked;
+  const enabled = toggle.checked;
+  urlInput.disabled = !enabled;
+  turnsInput.disabled = !enabled;
+}
+
+function setTurnsWithinBounds(input) {
+  const min = 0;
+  const raw = Number.parseInt(input.value ?? '', 10);
+  if (!Number.isFinite(raw)) {
+    input.value = String(min);
+    return;
+  }
+  input.value = String(Math.max(min, raw));
 }
 
 /**
@@ -1070,6 +1096,9 @@ async function saveSettings() {
   payload.post_prompt = document.getElementById('postPrompt')?.value ?? '';
   payload.enable_dynamic_context = document.getElementById('enableDynamicContext')?.checked ?? false;
   payload.dynamic_context_url = document.getElementById('dynamicContextUrl')?.value ?? '';
+  const turnsInput = document.getElementById('dynamicContextHistoryTurns');
+  const parsedTurns = Number.parseInt(turnsInput?.value ?? '', 10);
+  payload.dynamic_context_history_turns = Number.isFinite(parsedTurns) && parsedTurns >= 0 ? parsedTurns : 8;
 
   try {
     // 二重送信を防ぐため、ボタンを無効化
@@ -1101,7 +1130,8 @@ async function saveSettings() {
       enablePostPrompt: payload.enable_post_prompt,
       postPrompt: payload.post_prompt,
       enableDynamicContext: payload.enable_dynamic_context,
-      dynamicContextUrl: payload.dynamic_context_url
+      dynamicContextUrl: payload.dynamic_context_url,
+      dynamicContextHistoryTurns: String(payload.dynamic_context_history_turns)
     };
 
     // トーク画面に遷移
@@ -1134,6 +1164,7 @@ function goBack() {
   const postPromptInput = document.getElementById('postPrompt');
   const enableDynamicContextInput = document.getElementById('enableDynamicContext');
   const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
+  const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
 
   // 変更があるかどうかをチェック
   const hasChanges =
@@ -1147,6 +1178,7 @@ function goBack() {
     (postPromptInput?.value ?? '') !== originalSettings.postPrompt ||
     (enableDynamicContextInput?.checked ?? false) !== originalSettings.enableDynamicContext ||
     (dynamicContextUrlInput?.value ?? '') !== originalSettings.dynamicContextUrl ||
+    (dynamicContextHistoryTurnsInput?.value ?? '') !== originalSettings.dynamicContextHistoryTurns ||
     hasUnsavedAssetChanges();
 
   // 変更がある場合は確認ダイアログを表示
