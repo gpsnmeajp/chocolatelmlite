@@ -11,7 +11,7 @@ namespace CllDotnet
     public static class SystemPrompt
     {
         // システムプロンプトを構築するメソッド
-        public static string BuildSystemPrompt(FileManager fileManager, bool noStats = false)
+        public static string BuildSystemPrompt(FileManager fileManager)
         {
             var generalSettings = fileManager.generalSettings;
             string systemPrompt = fileManager.GetSystemPromptFromActivePersona();
@@ -34,21 +34,6 @@ namespace CllDotnet
             {
                 var fileList = fileManager.GetProjectFileListFromActivePersona();
                 additionalInfo += $"\n\n<project_files>\n{string.Join("\n", fileList)}\n</project_files>";
-            }
-
-            // 会話統計情報と休憩リマインダーを追加
-            if (generalSettings.EnableStatisticsAndBreakReminder && !noStats)
-            {
-                var stats = fileManager.GetTalkStatsFromActivePersona();
-                if (stats != null)
-                {
-                    additionalInfo += $"\n\n<conversations_statistics total='{stats.Total}' archived='{stats.Archived}' user_messages_last_8h='{stats.UserLast8h}' total_tokens='{stats.TotalTokens}'";
-                    if (stats.NeedUserRestRemind)
-                    {
-                        additionalInfo += $" need_rest_reminder='{stats.NeedUserRestRemind}'";
-                    }
-                    additionalInfo += $"/>";
-                }
             }
 
             if (additionalInfo.Length > 0)

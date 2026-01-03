@@ -75,32 +75,34 @@
           <textarea id="postPrompt" rows="6" placeholder="例: 必ず丁寧な口調で答えること..."></textarea>
         </div>
 
-        <div class="info-message">
-          🌐 <strong>Dynamic Context:</strong><br>
-          最新のユーザー発言を外部URLへPOSTし、応答を&lt;context&gt;タグで追記します。<br>
-          外部システムの情報をリアルタイムに反映させたい場合に有効です。<br>
-          応答は会話履歴に残らず、その生成時だけLLMに渡されます。API仕様は説明書を参照してください。<br>
-        </div>
-        <div class="form-group">
-          <label>Dynamic Context</label>
-          <p class="form-hint">外部サービスで動的コンテキストを生成する場合に指定します。</p>
-          <label class="checkbox-label">
-            <input type="checkbox" id="enableDynamicContext"> 有効
-          </label>
-          <input type="url" id="dynamicContextUrl" value="" placeholder="http://127.0.0.1:5000/dynamic-context ...">
-        </div>
-
         <details class="advanced-settings">
           <summary>
             <span class="advanced-settings__icon">▶</span>
             <span class="advanced-settings__label">応用的な設定</span>
           </summary>
           <div class="advanced-settings__content">
-            <p class="form-hint"><b>※これらの機能は、システム設定からオンにする必要があります</b></p>
+            <div class="info-message">
+              ⚠️ <strong>外部通信を伴う応用機能:</strong><br>
+              ※これらの機能は、システム設定からオンにする必要があります
+            </div>
+
+            <div class="info-message">
+              ⏰️ <strong>定期タイマー:</strong><br>
+              定期的にペルソナを起動します。<br>
+              定期的に文章を生成したり、外部システムの確認をさせたり、挨拶させたり出来ます。<br>
+            </div>
+
             <div class="form-group">
               <label>定期タイマー周期 (分)</label>
               <input type="number" id="timerCycle" value="0" min="0" step="1" placeholder="0">
               <p class="form-hint">定期的に自動でペルソナを起動することが出来ます。一定回数で自動停止します。(0=無効)</p>
+            </div>
+
+            <div class="info-message">
+              🎣 <strong>Webhook:</strong><br>
+              最新のペルソナ発言を外部URLへPOSTします。<br>
+              外部システムやDiscordなどに情報をリアルタイムに反映させたい場合に有効です。<br>
+              API仕様は説明書を参照してください。<br>
             </div>
 
             <div class="form-group">
@@ -112,6 +114,21 @@
               <label>Webhook本文</label>
               <textarea id="webhookBody" rows="5"></textarea>
               <p class="form-hint">POSTで送信されます。%text%と記載した箇所が本文に置換されます。(URLか本文が空欄の場合は送信されません)</p>
+            </div>
+
+            <div class="info-message">
+              🌐 <strong>動的コンテキスト:</strong><br>
+              最新のユーザー発言を外部URLへPOSTし、応答を&lt;context&gt;タグで追記します。<br>
+              外部システムの情報をリアルタイムに反映させたい場合に有効です。<br>
+              応答は会話履歴に残らず、その生成時だけLLMに渡されます。API仕様は説明書を参照してください。<br>
+            </div>
+            <div class="form-group">
+              <label>動的コンテキスト</label>
+              <p class="form-hint">外部サービスで動的コンテキストを生成する場合に指定します。</p>
+              <label class="checkbox-label">
+                <input type="checkbox" id="enableDynamicContext"> 有効
+              </label>
+              <input type="url" id="dynamicContextUrl" value="" placeholder="http://127.0.0.1:5000/dynamic-context ...">
             </div>
           </div>
         </details>

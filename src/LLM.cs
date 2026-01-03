@@ -215,6 +215,7 @@ namespace CllDotnet
                         string builtUserMessageHeader = ""; // ユーザーメッセージに追加する文字列のヘッダー部分
 
                         // <current_time>現在時刻</current_time>
+                        // <conversations_statistics total='総会話数' archived='アーカイブ済み会話数' user_messages_last_8h='過去8時間のユーザーメッセージ数' total_tokens='総トークン数' need_rest_reminder='true/false'/>
                         // <knowledge key="キーワード">ナレッジ内容</knowledge>
                         // <context>Dynamic Context</context>
                         // <user>ユーザー発言</user>
@@ -229,6 +230,22 @@ namespace CllDotnet
                             string datetimeString = localTime.ToString("yyyy-MM-dd (ddd) HH:mm:ss");
                             builtUserMessageHeader += $"<current_time>{datetimeString} ({timeZone.Id})</current_time>\n";
                             MyLog.LogWrite($"現在時刻を最終ユーザーメッセージに追加: {datetimeString} ({timeZone.Id})");
+                        }
+
+                        // 会話統計情報と休憩リマインダーを追加 (システムプロンプトに居るとキャッシュが効かなくなるので移動)
+                        if (fileManager.generalSettings.EnableStatisticsAndBreakReminder)
+                        {
+                            var stats = fileManager.GetTalkStatsFromActivePersona();
+                            if (stats != null)
+                            {
+                                string additionalInfo = $"<conversations_statistics total='{stats.Total}' archived='{stats.Archived}' user_messages_last_8h='{stats.UserLast8h}' total_tokens='{stats.TotalTokens}'";
+                                if (stats.NeedUserRestRemind)
+                                {
+                                    additionalInfo += $" need_rest_reminder='{stats.NeedUserRestRemind}'";
+                                }
+                                additionalInfo += $"/>\n";
+                                builtUserMessageHeader += additionalInfo;
+                            }
                         }
 
                         // キーワードナレッジを取得して必要に応じて利用する

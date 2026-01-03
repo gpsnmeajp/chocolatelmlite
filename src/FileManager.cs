@@ -1238,7 +1238,7 @@ namespace CllDotnet
             var messages = activePersonaTalkEntriesCache;
             // システムプロンプトを取得
             var rawSystemPrompt = GetSystemPromptFromActivePersona();
-            var builtSystemPrompt = SystemPrompt.BuildSystemPrompt(this, true); //会話統計取得処理はスキップさせる(無限ループするので)
+            var builtSystemPrompt = SystemPrompt.BuildSystemPrompt(this); //会話統計取得処理はスキップさせていた(過去のメモ)
 
             // 総トークン数
             var totalTokens = Tokens.CountTalkTokens(messages);
