@@ -1581,8 +1581,47 @@ function renderMessages(options = {}) {
     }
   }
 
-  // すべてのメッセージをHTML要素に変換
-  allMessages.forEach(message => {
+  // 最新のユーザー発言とアシスタント発言それぞれ1つのみを表示
+  let latestUserMessage = null;
+  let latestUserMessageIndex = -1;
+  let latestAssistantMessage = null;
+  
+  // まず最新のユーザー発言を探す
+  for (let i = allMessages.length - 1; i >= 0; i--) {
+    const message = allMessages[i];
+    const role = (message?.Role || '').toLowerCase();
+    
+    if (role === 'user') {
+      latestUserMessage = message;
+      latestUserMessageIndex = i;
+      break;
+    }
+  }
+  
+  // ユーザー発言が見つかった場合、それより後のアシスタント発言を探す
+  if (latestUserMessageIndex >= 0) {
+    for (let i = allMessages.length - 1; i > latestUserMessageIndex; i--) {
+      const message = allMessages[i];
+      const role = (message?.Role || '').toLowerCase();
+      
+      if (role === 'assistant' || role === 'chocolatelm') {
+        latestAssistantMessage = message;
+        break;
+      }
+    }
+  }
+  
+  // 表示するメッセージのリストを作成（ユーザー→アシスタントの順）
+  const messagesToDisplay = [];
+  if (latestUserMessage) {
+    messagesToDisplay.push(latestUserMessage);
+  }
+  if (latestAssistantMessage) {
+    messagesToDisplay.push(latestAssistantMessage);
+  }
+
+  // 選択されたメッセージをHTML要素に変換
+  messagesToDisplay.forEach(message => {
     const element = createMessageElement(message);
 
     // メッセージ内のすべての画像要素を取得して読み込み監視
