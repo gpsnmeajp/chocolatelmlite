@@ -499,7 +499,7 @@ namespace CllDotnet
                     var utc = DateTimeOffset.FromUnixTimeSeconds(message.Timestamp).UtcDateTime;
                     var dt = TimeZoneInfo.ConvertTime(utc, timeZone);
                     string datetimeString = dt.ToString("yyyy-MM-dd (ddd) HH:mm:ss");
-                    text += $"\n\n<timestamp>{datetimeString}</timestamp>";
+                    text = $"<timestamp>{datetimeString}</timestamp>\n{text}";
                 }
 
                 List<AIContent> contents = [new TextContent(text)];
