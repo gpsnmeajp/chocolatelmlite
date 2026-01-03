@@ -346,6 +346,7 @@ namespace CllDotnet
 
                             // ステータスコードに応じた追加メッセージ
                             var statusCodeEx = httpHandler.lastStatusCode;
+                            var errorResponseContent = httpHandler.lastErrorResponseContent;
 
                             switch (statusCodeEx)
                             {
@@ -383,10 +384,10 @@ namespace CllDotnet
                                     addition = "要求を満たすプロバイダが見つかりません。ルーティング条件やモデル設定を見直してください。(llama-serverの場合: モデルファイルの読み込み中です)";
                                     break;
                             }
-                            MyLog.LogWrite($"HTTPステータスコード: {statusCodeEx} {addition}");
+                            MyLog.LogWrite($"HTTPステータスコード: {statusCodeEx} {addition} {errorResponseContent}");
 
                             var text = $"【Chocolate LM Lite システムエラー】\n生成中にエラーが発生し、処理が中断されました。\n編集して再送信することでリトライできます。 \n理由: {statusCodeEx} {addition}";
-                            AppendTalkEntry(TalkRole.ChocolateLM, text, ex.Message);
+                            AppendTalkEntry(TalkRole.ChocolateLM, text, ex.Message + "\n\n" + errorResponseContent);
 
                             await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
                             isGenerating = false;
@@ -701,9 +702,9 @@ namespace CllDotnet
         // Dynamic Contextの取得と構築
         private async Task<string> BuildDynamicContextAsync(string userText, string dynamicContextUrl, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(dynamicContextUrl) || string.IsNullOrWhiteSpace(userText))
+            if (string.IsNullOrWhiteSpace(dynamicContextUrl) || userText == null)
             {
-                return string.Empty;
+                throw new ArgumentException("動的コンテキスト URLまたはユーザー入力が空です。(ありえない)");
             }
 
             try
@@ -723,8 +724,8 @@ namespace CllDotnet
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    MyLog.LogWrite($"DynamicContext取得に失敗しました: StatusCode={(int)response.StatusCode} Body={responseBody}");
-                    return string.Empty;
+                    MyLog.LogWrite($"動的コンテキスト 取得先サーバーが異常を応答しました。取得に失敗しました: StatusCode={(int)response.StatusCode} Body={responseBody}");
+                    throw new Exception($"動的コンテキスト 取得先サーバーが異常を応答しました。ステータスコード: {(int)response.StatusCode} レスポンスボディ: {responseBody}");
                 }
 
                 var trimmed = (responseBody ?? string.Empty).Trim();
@@ -740,12 +741,12 @@ namespace CllDotnet
             catch (TaskCanceledException)
             {
                 MyLog.LogWrite("DynamicContextの取得がタイムアウトまたはキャンセルされました。");
-                return string.Empty;
+                throw new OperationCanceledException("動的コンテキストの取得がタイムアウトまたはキャンセルされました。");
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
                 MyLog.LogWrite($"DynamicContextの取得で例外: {ex.Message} {ex.StackTrace}");
-                return string.Empty;
+                throw new Exception($"動的コンテキストの取得時に通信エラーが発生: {ex.Message}");
             }
         }
 

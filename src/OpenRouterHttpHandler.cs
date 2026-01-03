@@ -9,6 +9,7 @@ namespace CllDotnet
     public class OpenRouterHttpHandler : DelegatingHandler
     {
         public int lastStatusCode { get; private set; } = 0;
+        public string lastErrorResponseContent { get; private set; } = "";
         private readonly FileManager _fileManager;
         public OpenRouterHttpHandler(FileManager fileManager)
         {
@@ -35,12 +36,19 @@ namespace CllDotnet
 
             // ステータスコードを初期化
             lastStatusCode = 0;
+            lastErrorResponseContent = "";
 
             // 実際のHTTPリクエストを実行
             var response = await base.SendAsync(request, cancellationToken);
 
             // ステータスコードを保存
             lastStatusCode = (int)response.StatusCode;
+
+            // もじステータスコードが2xxでない場合、応答を強制的にストリーミング無視し、変数に保存する
+            if (!response.IsSuccessStatusCode)
+            {
+                lastErrorResponseContent = response.Content != null ? await response.Content.ReadAsStringAsync() : "";
+            }
 
             // レスポンスをデバッグファイルに保存
             if (_fileManager.generalSettings.DebugMode)
