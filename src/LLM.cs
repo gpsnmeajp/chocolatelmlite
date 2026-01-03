@@ -113,6 +113,9 @@ namespace CllDotnet
                         responseText = "";
                         var cancellationToken = cancellationTokenSource.Token;
                         var activePersonaSettings = fileManager.GetActivePersonaSettings();
+                        var activePersonaInfo = fileManager.GetActivePersonaIdWithName();
+                        int activePersonaId = activePersonaInfo?.id ?? 0;
+                        string activePersonaName = activePersonaInfo?.name ?? string.Empty;
                         var model = activePersonaSettings.Model;
                         _ = fileManager.LoadGeneralSettings(); // 全体設定を反映しておく(LLMパラメータなどあるため)
 
@@ -262,7 +265,14 @@ namespace CllDotnet
                             activePersonaSettings.EnableDynamicContext && // ペルソナ設定でDynamic Contextが有効
                             !string.IsNullOrWhiteSpace(activePersonaSettings.DynamicContextUrl))
                         {
-                            var dynamicContext = await BuildDynamicContextAsync(lastUserText, activePersonaSettings.DynamicContextUrl, cancellationToken);
+                            var dynamicContext = await BuildDynamicContextAsync(
+                                lastUserText,
+                                activePersonaSettings.DynamicContextUrl,
+                                mergedMessages,
+                                8,
+                                activePersonaId,
+                                activePersonaName,
+                                cancellationToken);
                             if (!string.IsNullOrWhiteSpace(dynamicContext))
                             {
                                 builtUserMessageHeader += $"<context>{dynamicContext}</context>\n";
@@ -700,7 +710,14 @@ namespace CllDotnet
         }
 
         // Dynamic Contextの取得と構築
-        private async Task<string> BuildDynamicContextAsync(string userText, string dynamicContextUrl, CancellationToken cancellationToken)
+        private async Task<string> BuildDynamicContextAsync(
+            string userText,
+            string dynamicContextUrl,
+            IEnumerable<TalkEntry> messages,
+            int maxHistoryTurns,
+            int personaId,
+            string personaName,
+            CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(dynamicContextUrl) || userText == null)
             {
@@ -714,7 +731,26 @@ namespace CllDotnet
                 httpClient.Timeout = TimeSpan.FromSeconds(fileManager.generalSettings.TimeoutSeconds);
 
                 // POSTリクエストの送信
-                var payload = new { text = userText };
+                var history = messages
+                    .Where(m => m.Role == TalkRole.User || m.Role == TalkRole.Assistant || m.Role == TalkRole.Tool)
+                    .TakeLast(maxHistoryTurns)
+                    .Select(m => new
+                    {
+                        role = m.Role == TalkRole.User ? "user" : (m.Role == TalkRole.Assistant ? "assistant" : "tool"),
+                        text = m.Text,
+                        uuid = m.Uuid,
+                        timestamp = m.Timestamp,
+                        toolDetail = m.ToolDetail,
+                        attachmentId = m.AttachmentId,
+                    })
+                    .ToList();
+
+                var payload = new
+                {
+                    text = userText,
+                    persona = new { id = personaId, name = personaName },
+                    history
+                };
                 var json = Serializer.JsonSerialize(payload, false);
                 using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
