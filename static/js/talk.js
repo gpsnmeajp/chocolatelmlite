@@ -1265,9 +1265,9 @@ async function submitMessageEdit() {
   } catch (error) {
     console.error('Failed to update message:', error);
     if (error && typeof error === 'object' && error.__attachmentUploadFailed) {
-      showAlertModal('添付ファイルのアップロードに失敗しました。(通信エラー)<br>通信環境を再確認し、再読み込みしてください。', { title: 'エラー' });
+      showAlertModal('添付ファイルのアップロードに失敗しました。(通信エラー)<br>通信環境を再確認し、再読み込みしてください。\n\n'+error, { title: 'エラー' });
     } else {
-      showAlertModal('メッセージの更新に失敗しました。(通信エラー)<br>通信環境を再確認し、再読み込みしてください。', { title: 'エラー' });
+      showAlertModal('メッセージの更新に失敗しました。(通信エラー)<br>通信環境を再確認し、再読み込みしてください。\n\n'+error , { title: 'エラー' });
     }
     return;
   } finally {
