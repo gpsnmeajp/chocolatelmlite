@@ -99,6 +99,7 @@ namespace CllDotnet
         public bool EnableOllamaWebExtension { get; set; } = false;
         public string OllamaWebExtensionEndpointUrl { get; set; } = "https://ollama.com/api/";
         public string OllamaWebExtensionApiKey { get; set; } = "";
+        public string OllamaWebExtensionSummarizeModelName { get; set; } = "gpt-oss:120b-cloud";
 
         public bool DebugMode { get; set; } = false;
 

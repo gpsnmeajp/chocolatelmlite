@@ -254,6 +254,9 @@ namespace CllDotnet
                         }
                         settings.OllamaWebExtensionApiKey = ollamaKey ?? settings.OllamaWebExtensionApiKey;
                         break;
+                    case "OllamaWebExtensionSummarizeModelName":
+                        settings.OllamaWebExtensionSummarizeModelName = kvp.Value.GetString() ?? settings.OllamaWebExtensionSummarizeModelName;
+                        break;
                     case "SystemSettingsLocalOnly":
                         settings.SystemSettingsLocalOnly = kvp.Value.GetBoolean();
                         break;
