@@ -200,7 +200,7 @@ namespace CllDotnet
                             };
 
                             fileManager.UpsertTalkHistoryToActivePersona(entryEx);
-                            await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
+                            await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" }, { "response", "" }, { "error", t } });
                             isGenerating = false;
                             return false;
                         }
@@ -401,7 +401,7 @@ namespace CllDotnet
                             var text = $"【Chocolate LM Lite システムエラー】\n生成中にエラーが発生し、処理が中断されました。\n編集して再送信することでリトライできます。 \n理由: {statusCodeEx} {addition}";
                             AppendTalkEntry(TalkRole.ChocolateLM, text, ex.Message + "\n\n" + errorResponseContent);
 
-                            await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
+                            await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" }, { "response", "" }, { "error", ex.Message + "\n\n" + errorResponseContent } });
                             isGenerating = false;
                             return false;
                         }
@@ -432,7 +432,7 @@ namespace CllDotnet
 
                         AppendTalkEntry(TalkRole.Assistant, finalResponseText, finalReasoningText);
 
-                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
+                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" }, { "response", finalResponseText }, { "error", "" } });
 
                         // 生成完了Webhook
                         if (fileManager.generalSettings.EnableWebhook)
@@ -469,7 +469,7 @@ namespace CllDotnet
                         var text = $"【Chocolate LM Lite システムエラー】\n予期せぬ異常が発生し、処理が中断されました。\n編集して再送信することでリトライできます。";
                         AppendTalkEntry(TalkRole.ChocolateLM, text, ex.Message);
 
-                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" } });
+                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" }, { "response", "" }, { "error", ex.Message + "\n\n" + ex.StackTrace } });
                         isGenerating = false;
                         return false;
                     }
@@ -844,7 +844,7 @@ namespace CllDotnet
             };
 
             var entryCallGuid = fileManager.UpsertTalkHistoryToActivePersona(entryCall);
-            await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "tool_update" } });
+            await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "tool_update" }, { "state", "call" }, { "name", context.Function.Name }, { "arguments", argJson } });
 
             await Task.Delay(500); // 少し待つ
 
@@ -873,7 +873,7 @@ namespace CllDotnet
                 };
 
                 fileManager.UpsertTalkHistoryToActivePersona(entryResult);
-                await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "tool_update" } });
+                await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "tool_update" }, { "state", "result" }, { "name", context.Function.Name }, { "result", resultJson } });
                 await Task.Delay(500); // 少し待つ
             }
             catch (Exception ex)
@@ -896,7 +896,7 @@ namespace CllDotnet
                 };
 
                 fileManager.UpsertTalkHistoryToActivePersona(entryResult);
-                await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "tool_update" } });
+                await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "tool_update" }, { "state", "error" }, { "name", context.Function.Name }, { "error", resultJson } });
                 await Task.Delay(500); // 少し待つ
 
                 throw;
