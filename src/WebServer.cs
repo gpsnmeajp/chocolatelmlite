@@ -433,16 +433,8 @@ namespace CllDotnet
                 }
 
                 // 拡張子からContent-Typeを設定
-                var extension = Path.GetExtension(file?.filename!).ToLower();
-                string contentType = extension switch
-                {
-                    ".txt" => "text/plain",
-                    ".webp" => "image/webp",
-                    ".gif" => "image/gif",
-                    ".jpg" => "image/jpeg",
-                    ".png" => "image/png",
-                    _ => "application/octet-stream",
-                };
+                var extension = Path.GetExtension(file?.filename!);
+                var contentType = FileManager.GetContentTypeFromExtension(extension);
 
                 context.Response.ContentType = contentType;
                 await context.Response.Body.WriteAsync(file?.data!, 0, (int)file?.data!.Length!);
@@ -463,16 +455,8 @@ namespace CllDotnet
                 }
 
                 // 拡張子からContent-Typeを設定
-                var extension = Path.GetExtension(context.Request.RouteValues["file"]?.ToString() ?? "").ToLower();
-                string contentType = extension switch
-                {
-                    ".txt" => "text/plain",
-                    ".webp" => "image/webp",
-                    ".gif" => "image/gif",
-                    ".jpg" => "image/jpeg",
-                    ".png" => "image/png",
-                    _ => "application/octet-stream",
-                };
+                var extension = Path.GetExtension(context.Request.RouteValues["file"]?.ToString() ?? "");
+                var contentType = FileManager.GetContentTypeFromExtension(extension);
 
                 context.Response.ContentType = contentType;
                 await context.Response.Body.WriteAsync(data, 0, data.Length);

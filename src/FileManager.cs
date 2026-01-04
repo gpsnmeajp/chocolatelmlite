@@ -177,6 +177,24 @@ namespace CllDotnet
             }
         }
 
+        public static string GetContentTypeFromExtension(string extension)
+        {
+            if (string.IsNullOrWhiteSpace(extension))
+            {
+                return "application/octet-stream";
+            }
+
+            return extension.ToLowerInvariant() switch
+            {
+                ".txt" => "text/plain",
+                ".webp" => "image/webp",
+                ".gif" => "image/gif",
+                ".jpg" => "image/jpeg",
+                ".png" => "image/png",
+                _ => "application/octet-stream",
+            };
+        }
+
         public FileManager()
         {
             RemoveAllLockFiles();

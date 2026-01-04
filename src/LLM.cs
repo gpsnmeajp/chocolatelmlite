@@ -215,6 +215,7 @@ namespace CllDotnet
                         }
 
                         string lastUserText = $"{lastUserMessage.Text}"; // このあとの処理でユーザー入力文字列が必要なため
+                        List<int>? lastUserAttachments = lastUserMessage.AttachmentId;
                         string builtUserMessageHeader = ""; // ユーザーメッセージに追加する文字列のヘッダー部分
 
                         // <current_time>現在時刻</current_time>
@@ -267,8 +268,9 @@ namespace CllDotnet
                         {
                             var dynamicContext = await BuildDynamicContextAsync(
                                 lastUserText,
+                                lastUserAttachments,
                                 activePersonaSettings.DynamicContextUrl,
-                                mergedMessages,
+                                talks,
                                 activePersonaSettings.DynamicContextHistoryTurns,
                                 activePersonaId,
                                 activePersonaName,
@@ -526,16 +528,8 @@ namespace CllDotnet
                         {
                             continue;
                         }
-                        var extension = Path.GetExtension(file.Value.filename).ToLower();
-                        string contentType = extension switch
-                        {
-                            ".txt" => "text/plain",
-                            ".webp" => "image/webp",
-                            ".gif" => "image/gif",
-                            ".jpg" => "image/jpeg",
-                            ".png" => "image/png",
-                            _ => "application/octet-stream",
-                        };
+                        var extension = Path.GetExtension(file.Value.filename);
+                        var contentType = FileManager.GetContentTypeFromExtension(extension);
 
                         contents.Add(new DataContent(file.Value.data, contentType));
                     }
@@ -714,6 +708,7 @@ namespace CllDotnet
         // Dynamic Contextの取得と構築
         private async Task<string> BuildDynamicContextAsync(
             string userText,
+            List<int>? userAttachments,
             string dynamicContextUrl,
             IEnumerable<TalkEntry> messages,
             int maxHistoryTurns,
@@ -747,11 +742,43 @@ namespace CllDotnet
                     })
                     .ToList();
 
+                // 最新ユーザーメッセージの添付ファイルをBase64化して送信する
+                var latestUserAttachments = new List<object>();
+
+                if (userAttachments != null)
+                {
+                    foreach (var attId in userAttachments ?? Enumerable.Empty<int>())
+                    {
+                        var file = fileManager.GetAttachmentFromActivePersona(attId);
+                        if (file == null)
+                        {
+                            continue;
+                        }
+
+                        var extension = Path.GetExtension(file.Value.filename);
+                        var contentType = FileManager.GetContentTypeFromExtension(extension);
+
+                        latestUserAttachments.Add(new
+                        {
+                            id = attId,
+                            filename = file.Value.filename,
+                            contentType,
+                            data_base64 = Convert.ToBase64String(file.Value.data)
+                        });
+                    }
+
+                    if (latestUserAttachments.Count > 0)
+                    {
+                        MyLog.LogWrite($"最新ユーザー添付 {latestUserAttachments.Count} 件をDynamicContextに送信します。");
+                    }
+                }
+
                 var payload = new
                 {
                     text = userText,
                     persona = new { id = personaId, name = personaName },
-                    history
+                    history,
+                    latest_user_attachments = latestUserAttachments.Count > 0 ? latestUserAttachments : null
                 };
                 var json = Serializer.JsonSerialize(payload, false);
                 using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
