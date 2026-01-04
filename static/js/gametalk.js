@@ -44,6 +44,7 @@ const state = {
   lastPingReceivedAt: 0,           // 最終ping受信時刻
   liveGeneration: null,            // ストリーミング中のAI応答
   isCanceling: false,              // キャンセルリクエスト中フラグ
+  showUserMessages: false,         // ユーザーメッセージ表示フラグ（トグル式）
 };
 
 // 自動スクロールを継続するための閾値（px）
@@ -315,6 +316,7 @@ async function init() {
   await reloadMessages({ forceScroll: true });
   startRealtime();
   refreshSendButton();
+  setupBackgroundClickHandler();
 }
 
 /**
@@ -416,9 +418,10 @@ function applyBackgroundImage(url) {
   }
 
   // CSS変数からオーバーレイ色を取得（デフォルト: 半透明の黒）
-  const overlayColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--chat-background-overlay-color')
-    .trim() || 'rgba(0, 0, 0, 0.38)';
+  // const overlayColor = getComputedStyle(document.documentElement)
+  //   .getPropertyValue('--chat-background-overlay-color')
+  //   .trim() || 'rgba(0, 0, 0, 0.38)';
+  const overlayColor = 'rgba(0, 0, 0, 0.01)';
 
   // オーバーレイグラデーションを作成（テキストの可読性向上のため）
   const overlayGradient = `linear-gradient(${overlayColor}, ${overlayColor})`;
@@ -2260,6 +2263,11 @@ function createMessageElement(message) {
     element.classList.add('editing');
   }
 
+  // ユーザーメッセージ表示フラグが立っている場合はクラスを追加
+  if (roleKey === 'user' && state.showUserMessages) {
+    element.classList.add('show-user-messages');
+  }
+
   return element;
 }
 
@@ -3166,6 +3174,55 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
   } else if (typeof colorSchemeMedia.addListener === 'function') {
     // 古いブラウザ向け（非推奨だが互換性のため残している）
     colorSchemeMedia.addListener(handleColorSchemeChange);
+  }
+}
+
+/**
+ * 背景クリックでユーザーメッセージをトグル表示
+ */
+function setupBackgroundClickHandler() {
+  const chatMessages = document.getElementById('chatMessages');
+  if (!chatMessages) return;
+
+  chatMessages.addEventListener('click', (event) => {
+    // メッセージ要素や入力欄などをクリックした場合は無視
+    if (event.target.closest('.message') || 
+        event.target.closest('.chat-input-container') ||
+        event.target.closest('.chat-header') ||
+        event.target.closest('.info-bar')) {
+      return;
+    }
+
+    // ユーザーメッセージをトグル
+    toggleUserMessages();
+  });
+}
+
+/**
+ * ユーザーメッセージの表示/非表示をトグル
+ */
+function toggleUserMessages() {
+  // 表示状態を反転
+  state.showUserMessages = !state.showUserMessages;
+
+  // すべてのユーザーメッセージとメッセージ全体に表示クラスを切り替え
+  const userMessages = document.querySelectorAll('.message.user');
+  const allMessages = document.querySelectorAll('.message');
+  
+  if (state.showUserMessages) {
+    userMessages.forEach(msg => {
+      msg.classList.add('show-user-messages');
+    });
+    allMessages.forEach(msg => {
+      msg.classList.add('show-user-messages');
+    });
+  } else {
+    userMessages.forEach(msg => {
+      msg.classList.remove('show-user-messages');
+    });
+    allMessages.forEach(msg => {
+      msg.classList.remove('show-user-messages');
+    });
   }
 }
 

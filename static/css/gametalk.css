@@ -248,6 +248,25 @@ body {
   border: 1px solid var(--border-color);
 }
 
+/* ユーザーメッセージの表示/非表示 */
+.message.user {
+  display: none !important;
+}
+
+.message.user.show-user-messages {
+  display: flex !important;
+  animation: fadeIn 0.3s ease;
+}
+
+/* アクションボタンの表示/非表示 */
+.message-actions {
+  display: none !important;
+}
+
+.show-user-messages .message-actions {
+  display: flex !important;
+}
+
 .message.chocolatelm .message-text {
   background-color: var(--bg-tertiary);
   border: 1px solid var(--accent-color);
