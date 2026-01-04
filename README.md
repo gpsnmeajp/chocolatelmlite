@@ -8,6 +8,8 @@ Chocolate LM Liteは、セルフホスト型のAIチャットアプリケーシ�
 ## [>> 説明書はこちら <<](https://gpsnmeajp.github.io/chocolatelmlitedoc/)
 ## [>> ダウンロード(Windows) <<](https://github.com/gpsnmeajp/chocolatelmlite/releases/)
 
+[APIドキュメント](API.md)
+
 <img src="image-1.png" width=200px> <img src="image.png" width=200px> <img src="image-2.png" width=200px>
 
 ## 概要
