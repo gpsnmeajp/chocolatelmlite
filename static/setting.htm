@@ -90,12 +90,12 @@
               ⏰️ <strong>定期タイマー:</strong><br>
               定期的にペルソナを起動します。<br>
               定期的に文章を生成したり、外部システムの確認をさせたり、挨拶させたり出来ます。<br>
+              一定回数で自動停止します。(0=無効)<br>
             </div>
 
             <div class="form-group">
               <label>定期タイマー周期 (分)</label>
               <input type="number" id="timerCycle" value="0" min="0" step="1" placeholder="0">
-              <p class="form-hint">定期的に自動でペルソナを起動することが出来ます。一定回数で自動停止します。(0=無効)</p>
             </div>
 
             <div class="info-message">
@@ -105,6 +105,7 @@
               ・%text%と記載した箇所が本文に置換されます。<br>
               ・%id%と記載した箇所がペルソナIDに置換されます。<br>
               ・%name%と記載した箇所がペルソナ名に置換されます。<br>
+              (URLか本文が空欄の場合は送信されません)<br>
             </div>
 
             <div class="form-group">
@@ -115,7 +116,6 @@
             <div class="form-group">
               <label>Webhook本文</label>
               <textarea id="webhookBody" rows="5"></textarea>
-              <p class="form-hint">POSTで送信されます。(URLか本文が空欄の場合は送信されません)</p>
             </div>
 
             <div class="info-message">
@@ -126,14 +126,17 @@
             </div>
             <div class="form-group">
               <label>動的コンテキスト</label>
-              <p class="form-hint">外部サービスで動的コンテキストを生成する場合に指定します。</p>
               <label class="checkbox-label">
                 <input type="checkbox" id="enableDynamicContext"> 有効
               </label>
               <input type="url" id="dynamicContextUrl" value="" placeholder="http://127.0.0.1:5000/dynamic-context ...">
               <label class="stacked-label" for="dynamicContextHistoryTurns">送信する履歴ターン数</label>
-              <input type="number" id="dynamicContextHistoryTurns" value="8" min="0" step="1" placeholder="8">
               <p class="form-hint">直近のユーザー/アシスタント応答を何ターン分送るかを指定します。(0で履歴なし)</p>
+              <input type="number" id="dynamicContextHistoryTurns" value="8" min="0" step="1" placeholder="8">
+              <label class="checkbox-label">
+                <input type="checkbox" id="removeAttachment"> 言語モデルへの送信前に添付を削除する
+              </label>
+              <p class="form-hint">言語モデルへ画像等を送らないようにします。動的コンテキスト側で解釈処理を行う場合に使用します。</p>
             </div>
           </div>
         </details>

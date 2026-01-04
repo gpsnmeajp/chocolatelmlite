@@ -669,6 +669,12 @@ namespace CllDotnet
                 personaSettings.DynamicContextUrl = dynamicContextUrlElement.GetString() ?? "";
             }
 
+            if (content.TryGetValue("remove_attachment", out var removeAttachmentElement) &&
+                (removeAttachmentElement.ValueKind == JsonValueKind.True || removeAttachmentElement.ValueKind == JsonValueKind.False))
+            {
+                personaSettings.RemoveAttachment = removeAttachmentElement.GetBoolean();
+            }
+
             fileManager.SaveActivePersonaSettings(personaSettings);
 
             if (content.ContainsKey("system_prompt") && content["system_prompt"].ValueKind == JsonValueKind.String)
@@ -697,6 +703,7 @@ namespace CllDotnet
                 result["enable_dynamic_context"] = settings.EnableDynamicContext;
                 result["dynamic_context_url"] = settings.DynamicContextUrl;
                 result["dynamic_context_history_turns"] = settings.DynamicContextHistoryTurns;
+                result["remove_attachment"] = settings.RemoveAttachment;
                 result["system_prompt"] = system_prompt ?? "";
             }
             return result;

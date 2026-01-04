@@ -297,7 +297,7 @@ namespace CllDotnet
                         }
                         MyLog.LogWrite($"最終ユーザーメッセージの構築完了\n{lastUserMessage.Text}");
 
-                        List<ChatMessage> chatMessages = talkEntryListToChatMessageList(mergedMessages, systemprompt);
+                        List<ChatMessage> chatMessages = talkEntryListToChatMessageList(mergedMessages, systemprompt, activePersonaSettings.RemoveAttachment);
 
                         // デバッグ出力
                         if (fileManager.generalSettings.DebugMode)
@@ -483,7 +483,7 @@ namespace CllDotnet
             return true;
         }
 
-        private List<ChatMessage> talkEntryListToChatMessageList(List<TalkEntry> messages, string systemprompt)
+        private List<ChatMessage> talkEntryListToChatMessageList(List<TalkEntry> messages, string systemprompt, bool removeAttachments)
         {
             // チャットメッセージの構築
             List<ChatMessage> chatMessages =
@@ -519,7 +519,7 @@ namespace CllDotnet
 
                 List<AIContent> contents = [new TextContent(text)];
                 // 画像を含む場合、添付ファイルをContentに追加(ただし、ユーザーロール以外正しく扱えないみたいなのでユーザーロール時のみ)
-                if (message.AttachmentId != null && message.Role == TalkRole.User)
+                if (!removeAttachments && message.AttachmentId != null && message.Role == TalkRole.User)
                 {
                     foreach (var attId in message.AttachmentId)
                     {

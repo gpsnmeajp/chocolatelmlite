@@ -59,6 +59,7 @@ async function loadSettings() {
     const enableDynamicContextInput = document.getElementById('enableDynamicContext');
     const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
     const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
+    const removeAttachmentInput = document.getElementById('removeAttachment');
 
     // 各フィールドに値を設定
     if (displayInput) {
@@ -113,6 +114,10 @@ async function loadSettings() {
       dynamicContextHistoryTurnsInput.value = Number.isFinite(parsed) && parsed >= 0 ? parsed : 8;
     }
 
+    if (removeAttachmentInput) {
+      removeAttachmentInput.checked = Boolean(data?.remove_attachment);
+    }
+
     updatePostPromptState();
     // DynamicContext機能のUIの状態を更新（有効/無効に応じてURL入力欄の活性/非活性を切り替え）
     updateDynamicContextState();
@@ -131,7 +136,8 @@ async function loadSettings() {
       enableDynamicContext: enableDynamicContextInput?.checked ?? false,
       // DynamicContextのURL設定を保存（変更検知に使用）
       dynamicContextUrl: dynamicContextUrlInput?.value ?? '',
-      dynamicContextHistoryTurns: dynamicContextHistoryTurnsInput?.value ?? ''
+      dynamicContextHistoryTurns: dynamicContextHistoryTurnsInput?.value ?? '',
+      removeAttachment: removeAttachmentInput?.checked ?? false
     };
   } catch (error) {
     console.error('Failed to load settings:', error);
@@ -1099,6 +1105,7 @@ async function saveSettings() {
   const turnsInput = document.getElementById('dynamicContextHistoryTurns');
   const parsedTurns = Number.parseInt(turnsInput?.value ?? '', 10);
   payload.dynamic_context_history_turns = Number.isFinite(parsedTurns) && parsedTurns >= 0 ? parsedTurns : 8;
+  payload.remove_attachment = document.getElementById('removeAttachment')?.checked ?? false;
 
   try {
     // 二重送信を防ぐため、ボタンを無効化
@@ -1131,7 +1138,8 @@ async function saveSettings() {
       postPrompt: payload.post_prompt,
       enableDynamicContext: payload.enable_dynamic_context,
       dynamicContextUrl: payload.dynamic_context_url,
-      dynamicContextHistoryTurns: String(payload.dynamic_context_history_turns)
+      dynamicContextHistoryTurns: String(payload.dynamic_context_history_turns),
+      removeAttachment: payload.remove_attachment
     };
 
     // トーク画面に遷移
@@ -1165,6 +1173,7 @@ function goBack() {
   const enableDynamicContextInput = document.getElementById('enableDynamicContext');
   const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
   const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
+  const removeAttachmentInput = document.getElementById('removeAttachment');
 
   // 変更があるかどうかをチェック
   const hasChanges =
@@ -1179,6 +1188,7 @@ function goBack() {
     (enableDynamicContextInput?.checked ?? false) !== originalSettings.enableDynamicContext ||
     (dynamicContextUrlInput?.value ?? '') !== originalSettings.dynamicContextUrl ||
     (dynamicContextHistoryTurnsInput?.value ?? '') !== originalSettings.dynamicContextHistoryTurns ||
+    (removeAttachmentInput?.checked ?? false) !== originalSettings.removeAttachment ||
     hasUnsavedAssetChanges();
 
   // 変更がある場合は確認ダイアログを表示

@@ -23,6 +23,7 @@ namespace CllDotnet
         public bool EnableDynamicContext { get; set; } = false;
         public string DynamicContextUrl { get; set; } = "";
         public int DynamicContextHistoryTurns { get; set; } = 8;
+        public bool RemoveAttachment { get; set; } = false;
     }
 
     public class YamlKeywordKnowledge
