@@ -360,7 +360,7 @@ async function duplicatePersona() {
 
     // 新しい名前が指定されている場合は追加
     if (newName) {
-      payload.name = newName;
+      payload.newName = newName;
     }
 
     // サーバーにペルソナ複製をリクエスト
