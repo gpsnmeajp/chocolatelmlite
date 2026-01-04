@@ -395,9 +395,24 @@ namespace CllDotnet
 
             if (!httpResponse.IsSuccessStatusCode)
             {
-                var message = $"Ollama Web拡張呼び出しに失敗しました。(HTTP {(int)httpResponse.StatusCode})";
-                MyLog.LogWrite($"{message} {responseContent}");
-                throw new InvalidOperationException($"{message} : {responseContent}");
+                if (httpResponse.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    var message = "Ollama Web拡張のAPI使用制限に達しました。しばらく待ってから再度お試しください。(Too Many Requests)";
+                    MyLog.LogWrite(message);
+                    return message;
+                }
+                else if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    var message = "Ollama Web拡張のAPIキーが無効です。設定を確認してください。";
+                    MyLog.LogWrite(message);
+                    throw new InvalidOperationException(message);
+                }
+                else
+                {
+                    var message = $"Ollama Web拡張呼び出しに失敗しました。(HTTP {(int)httpResponse.StatusCode})";
+                    MyLog.LogWrite($"{message} {responseContent}");
+                    throw new InvalidOperationException($"{message} : {responseContent}");
+                }
             }
 
             return responseContent;
