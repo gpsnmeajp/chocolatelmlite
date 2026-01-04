@@ -607,49 +607,47 @@ wscat -c ws://localhost:8010/ws
 ```
 
 **レスポンス例**
-```json
-< {"ping":true}
-< {"status":"started"}
-< {"ping":true}
-< {"ping":true}
-< {"status":"generating","response":""}
-< {"status":"generating","response":""}
-< {"status":"generating","response":""}
-< {"status":"generating","response":""}
-< {"status":"tool_update","state":"call","name":"UpdatePersonaMemory","arguments":"{\"call\":{\"id\":1,\"newContent\":\"\"}}"}
-< {"ping":true}
-< {"status":"tool_update","state":"result","name":"UpdatePersonaMemory","result":"{\"call\":{\"id\":1,\"newContent\":\"\"},\"result\":\"メモリを削除しました。\"}"}
-< {"status":"generating","response":""}
-< {"ping":true}
-< {"status":"generating","response":""}
-< {"status":"generating","response":"AB"}
-< {"status":"generating","response":"ABCD"}
-< {"status":"generating","response":"ABCD の"}
-< {"status":"generating","response":"ABCD の内容"}
-< {"status":"generating","response":"ABCD の内容を"}
-< {"status":"generating","response":"ABCD の内容を削"}
-< {"status":"generating","response":"ABCD の内容を削除"}
-< {"status":"generating","response":"ABCD の内容を削除しました"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何か"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かあり"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かありました"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつ"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでも"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせ"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせください"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせください。"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせください。"}
-< {"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせください。"}
-< {"status":"completed","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせください。","error":""}
-< {"ping":true}
-< {"ping":true}
-< {"ping":true}
+```jsonl
+{"ping":true}
+{"status":"started"}
+{"ping":true}
+{"ping":true}
+{"status":"generating","response":""}
+{"status":"generating","response":""}
+{"status":"generating","response":""}
+{"status":"generating","response":""}
+{"status":"tool_update","state":"call","name":"UpdatePersonaMemory","arguments":"{\"call\":{\"id\":1,\"newContent\":\"\"}}"}
+{"ping":true}
+{"status":"tool_update","state":"result","name":"UpdatePersonaMemory","result":"{\"call\":{\"id\":1,\"newContent\":\"\"},\"result\":\"メモリを削除しました。\"}"}
+{"status":"generating","response":""}
+{"ping":true}
+{"status":"generating","response":""}
+{"status":"generating","response":"AB"}
+{"status":"generating","response":"ABCD"}
+{"status":"generating","response":"ABCD の"}
+{"status":"generating","response":"ABCD の内容"}
+{"status":"generating","response":"ABCD の内容を"}
+{"status":"generating","response":"ABCD の内容を削"}
+{"status":"generating","response":"ABCD の内容を削除"}
+{"status":"generating","response":"ABCD の内容を削除しました"}
+{"status":"generating","response":"ABCD の内容を削除しました。他"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何か"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かあり"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かありました"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつ"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでも"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせ"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせください"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせください。"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせください。"}
+{"status":"generating","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせください。"}
+{"status":"completed","response":"ABCD の内容を削除しました。他に何かありましたら、いつでもお知らせください。","error":""}
+{"ping":true}
 ```
 
 ---
