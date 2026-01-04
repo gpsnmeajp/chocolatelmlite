@@ -1,6 +1,8 @@
 ## Chocolate LM Lite APIリファレンス (REST + WebSocket)
 
-Chocolate LM Liteは、会話履歴・ペルソナ・設定を操作できるREST APIと、生成進捗を受け取るWebSocketを提供します。本ドキュメントでは、実際のコード実装（`src/WebServer.cs`, `src/Persona.cs`, `src/FileManager.cs` など）の挙動に基づいたAPI仕様を説明し、各エンドポイントの使用例として`curl`コマンドを記載しています。
+Chocolate LM Liteは、会話履歴・ペルソナ・設定を操作できるREST APIと、生成進捗を受け取るWebSocketを提供します。
+
+本ドキュメントでは、実際のコード実装（`src/WebServer.cs`, `src/Persona.cs`, `src/FileManager.cs` など）の挙動に基づいたAPI仕様を説明し、各エンドポイントの使用例として`curl`コマンドを記載しています。
 
 ### 基本情報
 
