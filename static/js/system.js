@@ -20,7 +20,7 @@ const PRIMARY_FIELD_KEYS = [
 
 // APIキーのマスク表示時のフォールバック文字列
 const MASKED_API_KEY_FALLBACK = '************';
-const SECRET_FIELD_KEYS = ['LlmApiKey', 'ImageGenerationApiKey'];
+const SECRET_FIELD_KEYS = ['LlmApiKey', 'ImageGenerationApiKey', 'OllamaWebExtensionApiKey'];
 
 // 各設定項目の定義（ラベル、説明文、入力タイプ、バリデーションルール）
 const FIELD_DEFINITIONS = {
@@ -279,6 +279,32 @@ const FIELD_DEFINITIONS = {
     placeholder: 'google/gemini-2.5-flash-image など',
     note: '<a href="https://openrouter.ai/models?fmt=cards&output_modalities=image">OpenRouterの場合はこちらからモデルを探せます</a>',
     order: 223
+  },
+  EnableOllamaWebExtension: {
+    label: 'Ollama Cloud Web拡張を有効化',
+    description: 'Ollamaが提供するWeb検索、Webページ取得機能を利用できるようにします。Ollama CloudのAPIキーが必要です。',
+    valueType: 'boolean',
+    order: 224
+  },
+  OllamaWebExtensionEndpointUrl: {
+    label: 'Ollama Cloud Base URL',
+    description: 'Ollama CloudのBase URLです。既定は https://ollama.com/api/ です。原則として変更の必要はありません。',
+    valueType: 'string',
+    inputType: 'url',
+    allowEmpty: true,
+    placeholder: 'https://ollama.com/api/',
+    note: '<a href="https://ollama.com/settings/keys">Ollama CloudのAPIキー作成</a><br><a href="https://ollama.com/blog/web-search">Ollama Web Searchについて</a><br><a href="https://docs.ollama.com/capabilities/web-search">Ollama Web Search仕様</a>',
+    order: 225
+  },
+  OllamaWebExtensionApiKey: {
+    label: 'Ollama Cloud APIキー',
+    description: 'Ollama CloudにアクセスするためのAPIキーです。(拡張機能の提供にのみ使用します。このキーは言語モデルには使用しません。)',
+    valueType: 'string',
+    inputType: 'password',
+    allowEmpty: true,
+    autocomplete: 'off',
+    placeholder: MASKED_API_KEY_FALLBACK,
+    order: 226
   },
   DebugMode: {
     label: 'デバッグモード',

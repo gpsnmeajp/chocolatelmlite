@@ -123,6 +123,7 @@ namespace CllDotnet
             var clonedSettings = settings.ShallowCopy();
             clonedSettings.LlmApiKey = string.IsNullOrEmpty(settings.LlmApiKey) ? string.Empty : "************"; // APIキーは返さない
             clonedSettings.ImageGenerationApiKey = string.IsNullOrEmpty(settings.ImageGenerationApiKey) ? string.Empty : "************"; // 画像生成APIキーは返さない
+            clonedSettings.OllamaWebExtensionApiKey = string.IsNullOrEmpty(settings.OllamaWebExtensionApiKey) ? string.Empty : "************"; // Ollama Web拡張APIキーは返さない
             return new Dictionary<string, object>
             {
                 { "settings", clonedSettings }
@@ -238,6 +239,20 @@ namespace CllDotnet
                         break;
                     case "EnableMcpTools":
                         settings.EnableMcpTools = kvp.Value.GetBoolean();
+                        break;
+                    case "EnableOllamaWebExtension":
+                        settings.EnableOllamaWebExtension = kvp.Value.GetBoolean();
+                        break;
+                    case "OllamaWebExtensionEndpointUrl":
+                        settings.OllamaWebExtensionEndpointUrl = kvp.Value.GetString() ?? settings.OllamaWebExtensionEndpointUrl;
+                        break;
+                    case "OllamaWebExtensionApiKey":
+                        var ollamaKey = kvp.Value.GetString();
+                        if (ollamaKey == null || ollamaKey.StartsWith("**"))
+                        {
+                            break;
+                        }
+                        settings.OllamaWebExtensionApiKey = ollamaKey ?? settings.OllamaWebExtensionApiKey;
                         break;
                     case "SystemSettingsLocalOnly":
                         settings.SystemSettingsLocalOnly = kvp.Value.GetBoolean();
