@@ -306,6 +306,7 @@ function handleKeydown(event) {
  */
 async function init() {
   setupScrollObservers();
+  setupPasteHandler();
   const generalSettingsLoaded = await loadGeneralSettings();
   if (!generalSettingsLoaded) {
     showAlertModal('通信に失敗しました。ページを再読み込みしてください。', { title: '全体設定読み込みエラー' });
@@ -621,6 +622,75 @@ function clearAttachments() {
 
   // プレビュー表示を更新
   updateAttachmentPreview();
+}
+
+/**
+ * ペーストイベントハンドラーのセットアップ
+ *
+ * チャット入力欄にペーストされた画像を自動的に添付ファイルとして追加します。
+ */
+function setupPasteHandler() {
+  const chatInput = document.getElementById('chatInput');
+  if (!chatInput) {
+    return;
+  }
+
+  chatInput.addEventListener('paste', event => {
+    // クリップボードデータを取得
+    const items = event.clipboardData?.items;
+    if (!items) {
+      return;
+    }
+
+    // クリップボード内の画像ファイルを検索
+    const imageItems = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      // 画像タイプのみを対象とする
+      if (item.type.startsWith('image/')) {
+        imageItems.push(item);
+      }
+    }
+
+    // 画像が見つからなければ通常のペースト動作を続ける
+    if (imageItems.length === 0) {
+      return;
+    }
+
+    // 画像が見つかった場合は、デフォルトのペースト動作を防止
+    event.preventDefault();
+
+    // 各画像を添付ファイルとして追加
+    const remainingSlots = MAX_ATTACHMENTS - state.attachments.length;
+    
+    if (remainingSlots <= 0) {
+      showAlertModal(`添付ファイルは最大${MAX_ATTACHMENTS}件までです。`, { title: '添付ファイル' });
+      return;
+    }
+
+    const itemsToAdd = imageItems.slice(0, remainingSlots);
+    let addedCount = 0;
+
+    itemsToAdd.forEach(item => {
+      const file = item.getAsFile();
+      if (file) {
+        // BlobからプレビューURLを生成
+        const previewUrl = URL.createObjectURL(file);
+        state.attachments.push({ file, previewUrl });
+        addedCount++;
+      }
+    });
+
+    // UIのプレビュー表示を更新
+    if (addedCount > 0) {
+      updateAttachmentPreview();
+    }
+
+    // ペーストした画像が上限を超えていた場合は警告を表示
+    if (imageItems.length > remainingSlots) {
+      showAlertModal(`添付ファイルは最大${MAX_ATTACHMENTS}件までです。先頭から${remainingSlots}件のみ追加しました。`, { title: '添付ファイル' });
+    }
+  });
 }
 
 /**
