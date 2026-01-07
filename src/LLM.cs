@@ -287,7 +287,13 @@ namespace CllDotnet
                         if (!string.IsNullOrWhiteSpace(postPrompt))
                         {
                             // ポストプロンプトがある場合は、<system>タグで囲んで追加
-                            lastUserMessage.Text = $"{builtUserMessageHeader}<user>{lastUserText}</user>\n<system>{postPrompt}</system>";
+                            if (!lastUserText.StartsWith("<system>"))
+                            {
+                                lastUserMessage.Text = $"{builtUserMessageHeader}<user>{lastUserText}</user>\n<system>{postPrompt}</system>";
+                            }else{
+                                // すでに<system>タグから始まる場合(タイマーなど)は、そのまま追加
+                                lastUserMessage.Text = $"{builtUserMessageHeader}{lastUserText}\n<system>{postPrompt}</system>";
+                            }
                             MyLog.LogWrite($"ポストプロンプトを最終ユーザーメッセージに追加");
                         }
                         else
