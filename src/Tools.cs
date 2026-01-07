@@ -110,8 +110,8 @@ namespace CllDotnet
 
             if (generalSettings.EnableOllamaWebExtension)
             {
-                tools.Add(AIFunctionFactory.Create(WebSearch));
-                tools.Add(AIFunctionFactory.Create(WebFetch));
+                tools.Add(AIFunctionFactory.Create(OllamaWebSearch));
+                tools.Add(AIFunctionFactory.Create(OllamaWebFetch));
             }
 
             if (generalSettings.EnableMcpTools)
@@ -306,7 +306,7 @@ namespace CllDotnet
         }
 
         [Description("Ollama Web Search APIを使ってWeb検索を行います")]
-        async Task<string> WebSearch(
+        async Task<string> OllamaWebSearch(
             [Description("検索クエリ")] string query,
             [Description("取得する最大件数(1-10)")] int maxResults = 5
         )
@@ -329,7 +329,7 @@ namespace CllDotnet
         }
 
         [Description("Ollama Web Fetch APIを使って指定URLの内容を取得します")]
-        async Task<string> WebFetch(
+        async Task<string> OllamaWebFetch(
             [Description("取得するURL")] string url
         )
         {
@@ -559,12 +559,13 @@ namespace CllDotnet
         {
             var sb = new StringBuilder();
             sb.AppendLine($"Summarize {title}.");
+            sb.AppendLine("- Keep it concise and under 2000 characters.");
             sb.AppendLine("- Focus on factual points.");
             sb.AppendLine("- Output as YAML (title, content, url).");
             sb.AppendLine("- Preserve the original language; if Japanese is included, summarize in Japanese.");
             sb.AppendLine();
             sb.AppendLine(TrimToLimit(sourceText, 128*1000)); // 128k文字まで
-            sb.AppendLine("<reminder>Output as YAML (title, content, url). Keep it concise and under 4000 characters.</reminder>");
+            sb.AppendLine("<reminder>Output as YAML (title, content, url).</reminder>");
             return sb.ToString();
         }
 
@@ -581,7 +582,7 @@ namespace CllDotnet
                 model = settings.OllamaWebExtensionSummarizeModelName.Trim(),
                 messages = new List<object>
                 {
-                    new { role = "system", content = "You summarize the provided web data. Keep answers under 4000 characters." },
+                    new { role = "system", content = "You summarize the provided web data. Keep answers under 2000 characters." },
                     new { role = "user", content = userContent }
                 },
                 stream = false
@@ -630,13 +631,13 @@ namespace CllDotnet
                             messageElement.TryGetProperty("content", out var contentElement))
                         {
                             var summary = contentElement.GetString() ?? string.Empty;
-                            return TrimToLimit(summary, 5000);
+                            return TrimToLimit(summary, 4000);
                         }
 
                         if (doc.RootElement.TryGetProperty("content", out var rootContentElement))
                         {
                             var summary = rootContentElement.GetString() ?? string.Empty;
-                            return TrimToLimit(summary, 5000);
+                            return TrimToLimit(summary, 4000);
                         }
                     }
                     catch (Exception ex)
