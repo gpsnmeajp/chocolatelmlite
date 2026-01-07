@@ -298,22 +298,13 @@ const FIELD_DEFINITIONS = {
   },
   OllamaWebExtensionApiKey: {
     label: 'Ollama Cloud APIキー',
-    description: 'Ollama CloudにアクセスするためのAPIキーです。(拡張機能の提供にのみ使用します。このキーは通常の言語モデルには使用しません。)',
+    description: 'Ollama CloudにアクセスするためのAPIキーです。(拡張機能の提供にのみ使用します。このキーは言語モデルには使用しません。)',
     valueType: 'string',
     inputType: 'password',
     allowEmpty: true,
     autocomplete: 'off',
     placeholder: MASKED_API_KEY_FALLBACK,
     order: 226
-  },
-  OllamaWebExtensionSummarizeModelName: {
-    label: 'Ollama Cloud 要約用言語モデル',
-    description: 'Web拡張が取得した検索結果やページ内容を要約する際に使用するモデル名です。',
-    valueType: 'string',
-    allowEmpty: true,
-    placeholder: 'gpt-oss:120b-cloud など',
-    note: '128Kコンテキストに対応したモデルを使用してください。空欄の場合は要約しません。',
-    order: 227
   },
   DebugMode: {
     label: 'デバッグモード',
