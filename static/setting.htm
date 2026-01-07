@@ -82,6 +82,18 @@
           </summary>
           <div class="advanced-settings__content">
             <div class="info-message">
+              🪄 <strong>ポストプロセススクリプト:</strong><br>
+              アシスタントの各メッセージ本文へ加工を施せます。<br>
+              JavaScriptの <code>postProcess(message)</code> 関数を定義し、置換等の処理をしてreturnしてください。<br>
+              サーバー上のサンドボックス内で実行され、エラー時は元の本文がそのまま表示されます。<br>
+            </div>
+            <div class="form-group">
+              <label>ポストプロセススクリプト</label>
+              <textarea id="postProcessScript" rows="10"
+                placeholder="function postProcess(message) {\n  return message;\n}"></textarea>
+            </div>
+
+            <div class="info-message">
               ⚠️ <strong>外部通信を伴う応用機能:</strong><br>
               ※これらの機能は、システム設定からオンにする必要があります
             </div>

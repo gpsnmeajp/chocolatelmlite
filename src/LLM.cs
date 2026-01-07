@@ -345,7 +345,8 @@ namespace CllDotnet
                                 updates.Add(update);
                                 response = updates.ToChatResponse();
                                 // MyLog.LogWrite($"[進行中] {response.Text}");
-                                await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "generating" }, { "response", responseText } });
+                                string postProcessTextInGenerating = fileManager.ApplyPostProcessScript(responseText); // 生成中にもポストプロセスを適用
+                                await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "generating" }, { "response", postProcessTextInGenerating } });
                                 Program.cts.Token.ThrowIfCancellationRequested();
                             }
 
@@ -438,7 +439,8 @@ namespace CllDotnet
 
                         AppendTalkEntry(TalkRole.Assistant, finalResponseText, finalReasoningText);
 
-                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" }, { "response", finalResponseText }, { "error", "" } });
+                        string postProcessText = fileManager.ApplyPostProcessScript(finalResponseText);
+                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" }, { "response", postProcessText }, { "error", "" } });
 
                         // 生成完了Webhook
                         if (fileManager.generalSettings.EnableWebhook)

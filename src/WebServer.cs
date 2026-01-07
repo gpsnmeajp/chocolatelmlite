@@ -141,7 +141,7 @@ namespace CllDotnet
                     context.Response.ContentType = "application/json";
                     await context.Response.WriteAsync(DictionaryToJson("exception middleware", new Dictionary<string, object>
                     {
-                        { "error", "サーバー内部エラーが発生しました。" },
+                        { "error", "サーバー内部エラーが発生しました。" + ex.Message },
                     }));
                 }
             });

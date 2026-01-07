@@ -454,7 +454,8 @@ curl -X POST http://localhost:8010/api/persona/active/cancel
 	"webhook_url": "",
 	"webhook_body": "{\"content\":\"%text%\"}",
 	"enable_post_prompt": false,
-	"post_prompt": "",
+    "post_prompt": "",
+    "post_process_script": "function postProcess(message) {\n  return message;\n}",
 	"enable_dynamic_context": false,
 	"dynamic_context_url": "",
 	"dynamic_context_history_turns": 8,
@@ -470,6 +471,8 @@ curl http://localhost:8010/api/persona/active/setting
 
 #### POST /api/persona/active/setting
 アクティブなペルソナの設定を更新します。`system_prompt`はプレーンテキストとして保存されます。
+
+`post_process_script` には JavaScript を渡します。`postProcess(message)` 関数を定義すると、クライアントへ返す直前にメッセージ本文へ変換処理を適用できます。サンドボックス内で実行され、エラー時は未加工の本文が使用されます。
 
 **リクエスト例**
 ```json

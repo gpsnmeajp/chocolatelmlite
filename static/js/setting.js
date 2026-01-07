@@ -56,6 +56,7 @@ async function loadSettings() {
     const webhookBodyInput = document.getElementById('webhookBody');
     const enablePostPromptInput = document.getElementById('enablePostPrompt');
     const postPromptInput = document.getElementById('postPrompt');
+    const postProcessScriptInput = document.getElementById('postProcessScript');
     const enableDynamicContextInput = document.getElementById('enableDynamicContext');
     const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
     const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
@@ -100,6 +101,10 @@ async function loadSettings() {
       postPromptInput.value = data?.post_prompt ?? '';
     }
 
+    if (postProcessScriptInput) {
+      postProcessScriptInput.value = data?.post_process_script ?? '';
+    }
+
     if (enableDynamicContextInput) {
       enableDynamicContextInput.checked = Boolean(data?.enable_dynamic_context);
     }
@@ -132,6 +137,7 @@ async function loadSettings() {
       webhookBody: webhookBodyInput?.value ?? '',
       enablePostPrompt: enablePostPromptInput?.checked ?? false,
       postPrompt: postPromptInput?.value ?? '',
+      postProcessScript: postProcessScriptInput?.value ?? '',
       // DynamicContext機能の有効/無効状態を保存（変更検知に使用）
       enableDynamicContext: enableDynamicContextInput?.checked ?? false,
       // DynamicContextのURL設定を保存（変更検知に使用）
@@ -1100,6 +1106,7 @@ async function saveSettings() {
   payload.webhook_body = document.getElementById('webhookBody')?.value ?? '';
   payload.enable_post_prompt = document.getElementById('enablePostPrompt')?.checked ?? false;
   payload.post_prompt = document.getElementById('postPrompt')?.value ?? '';
+  payload.post_process_script = document.getElementById('postProcessScript')?.value ?? '';
   payload.enable_dynamic_context = document.getElementById('enableDynamicContext')?.checked ?? false;
   payload.dynamic_context_url = document.getElementById('dynamicContextUrl')?.value ?? '';
   const turnsInput = document.getElementById('dynamicContextHistoryTurns');
@@ -1136,6 +1143,7 @@ async function saveSettings() {
       webhookBody: payload.webhook_body,
       enablePostPrompt: payload.enable_post_prompt,
       postPrompt: payload.post_prompt,
+      postProcessScript: payload.post_process_script,
       enableDynamicContext: payload.enable_dynamic_context,
       dynamicContextUrl: payload.dynamic_context_url,
       dynamicContextHistoryTurns: String(payload.dynamic_context_history_turns),
@@ -1170,6 +1178,7 @@ function goBack() {
   const webhookBodyInput = document.getElementById('webhookBody');
   const enablePostPromptInput = document.getElementById('enablePostPrompt');
   const postPromptInput = document.getElementById('postPrompt');
+  const postProcessScriptInput = document.getElementById('postProcessScript');
   const enableDynamicContextInput = document.getElementById('enableDynamicContext');
   const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
   const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
@@ -1185,6 +1194,7 @@ function goBack() {
     (webhookBodyInput?.value ?? '') !== originalSettings.webhookBody ||
     (enablePostPromptInput?.checked ?? false) !== originalSettings.enablePostPrompt ||
     (postPromptInput?.value ?? '') !== originalSettings.postPrompt ||
+    (postProcessScriptInput?.value ?? '') !== originalSettings.postProcessScript ||
     (enableDynamicContextInput?.checked ?? false) !== originalSettings.enableDynamicContext ||
     (dynamicContextUrlInput?.value ?? '') !== originalSettings.dynamicContextUrl ||
     (dynamicContextHistoryTurnsInput?.value ?? '') !== originalSettings.dynamicContextHistoryTurns ||

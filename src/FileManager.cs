@@ -9,6 +9,8 @@ using System.Text.Json.Serialization;
 using YamlDotNet.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Jint;
+using Jint.Native;
 
 namespace CllDotnet
 {
@@ -149,6 +151,7 @@ namespace CllDotnet
         private readonly string settingsFilename = "settings.yaml";
         private readonly string manageFilename = "manage.yaml";
         private readonly string systemPromptFilename = "system_prompt.txt";
+        private readonly string postProcessScriptFilename = "post_process_script.js";
         private readonly string keywordKnowledgeFilename = "keyword_knowledge.yaml";
         private readonly string talkJsonlFilename = "talk.jsonl";
         private readonly string talkDbFilename = "talk.sqlite3";
@@ -160,6 +163,7 @@ namespace CllDotnet
 
         private List<TalkEntry> activePersonaTalkEntriesCache = new List<TalkEntry>();
         private SQLiteDB? activePersonaTalkDb;
+        private Engine? activePersonaPostProcessScriptEngine;
         private int? activePersonaTalkDbPersonaId;
         private readonly ConcurrentDictionary<int, SemaphoreSlim> talkLocks = new();
 
@@ -219,6 +223,9 @@ namespace CllDotnet
             {
                 activePersonaTalkEntriesCache = GetAllTalkHistoryAllFromActivePersona();
             }
+
+            // ポストプロセススクリプトエンジンを初期化
+            InitializePostProcessEngine();
         }
 
         // data配下のロックファイルを再帰的に削除
@@ -246,7 +253,7 @@ namespace CllDotnet
             if (File.Exists(filePath))
             {
                 var yaml = File.ReadAllText(filePath);
-                var deserializer = new YamlDotNet.Serialization.Deserializer();
+                var deserializer = new YamlDotNet.Serialization.DeserializerBuilder().IgnoreUnmatchedProperties().Build();
                 try
                 {
                     var obj = deserializer.Deserialize<T>(yaml);
@@ -255,10 +262,10 @@ namespace CllDotnet
                         return obj;
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
                     // デシリアライズ失敗時は新規作成へ
-                    MyLog.LogWrite($"YAMLのデシリアライズに失敗しました: {filePath}。初期値で開始。");
+                    MyLog.LogWrite($"YAMLのデシリアライズに失敗しました: {filePath}。初期値で開始。例外: {ex.Message}");
                 }
             }
 
@@ -408,6 +415,20 @@ namespace CllDotnet
             string systemPromptPath = Path.Combine(personaDir, systemPromptFilename);
             File.WriteAllText(systemPromptPath, "あなたは親切なアシスタントです。ユーザーの質問に丁寧に回答してください。");
 
+            // ポストプロセススクリプトファイルの作成
+            string postProcessScriptPath = Path.Combine(personaDir, postProcessScriptFilename);
+            if (!File.Exists(postProcessScriptPath))
+            {
+                var defaultScript = ""
+                    + "function postProcess(message) {\n"
+                    + "  return message;\n"
+                    + "}\n";
+                File.WriteAllText(postProcessScriptPath, defaultScript);
+
+                // ポストプロセススクリプトエンジンを初期化
+                InitializePostProcessEngine();
+            }
+
             // 空の会話履歴データベースの作成
             var talkDbPath = Path.Combine(personaDir, talkDbFilename);
             _ = new SQLiteDB(talkDbPath, int.Parse(id));
@@ -503,6 +524,9 @@ namespace CllDotnet
             {
                 activePersonaTalkEntriesCache = GetAllTalkHistoryAllFromActivePersona();
             }
+
+            // ポストプロセススクリプトエンジンを初期化
+            InitializePostProcessEngine();
 
             MyLog.LogWrite($"アクティブペルソナを設定しました: {id}");
 
@@ -786,7 +810,8 @@ namespace CllDotnet
                 {
                     MyLog.LogWrite($"メモリロックの取得に失敗しました: {ex.Message} {ex.StackTrace} 再試行します...");
                     await Task.Delay(100, cancellationToken);
-                }finally
+                }
+                finally
                 {
                     // ロックファイルが存在する場合は削除
                     if (File.Exists(lockFilePath) && lockAcquired)
@@ -865,6 +890,46 @@ namespace CllDotnet
             string systemPromptPath = Path.Combine(personaDir, systemPromptFilename);
             File.WriteAllText(systemPromptPath, prompt);
             MyLog.LogWrite($"アクティブなペルソナのシステムプロンプトを保存: {systemPromptPath}");
+        }
+
+        // アクティブなペルソナフォルダ内のポストプロセススクリプトを取得する
+        public string GetActivePersonaPostProcessScript()
+        {
+            var activeId = GetActivePersonaId();
+            if (activeId == null)
+            {
+                MyLog.LogWrite("アクティブなペルソナがありません。ポストプロセススクリプトの取得に失敗しました。");
+                throw new InvalidOperationException("アクティブなペルソナがありません。ポストプロセススクリプトの取得に失敗しました。");
+            }
+
+            string personaDir = GetPersonaDirectoryById(activeId.Value);
+            string scriptPath = Path.Combine(personaDir, postProcessScriptFilename);
+            if (!File.Exists(scriptPath))
+            {
+                return string.Empty;
+            }
+
+            return File.ReadAllText(scriptPath);
+        }
+
+        // アクティブなペルソナフォルダ内のポストプロセススクリプトを保存する
+        public void SaveActivePersonaPostProcessScript(string script)
+        {
+            var activeId = GetActivePersonaId();
+            if (activeId == null)
+            {
+                MyLog.LogWrite("アクティブなペルソナがありません。ポストプロセススクリプトの保存に失敗しました。");
+                throw new InvalidOperationException("アクティブなペルソナがありません。ポストプロセススクリプトの保存に失敗しました。");
+            }
+
+            string personaDir = GetPersonaDirectoryById(activeId.Value);
+            string scriptPath = Path.Combine(personaDir, postProcessScriptFilename);
+            Directory.CreateDirectory(personaDir);
+            File.WriteAllText(scriptPath, script ?? string.Empty);
+            MyLog.LogWrite($"アクティブなペルソナのポストプロセススクリプトを保存: {scriptPath}");
+
+            // ポストプロセススクリプトエンジンを初期化
+            InitializePostProcessEngine();
         }
 
         //アクティブなペルソナフォルダ内の添付フォルダ内の添付ファイルidのリストを返す
@@ -1336,6 +1401,167 @@ namespace CllDotnet
             var invalidChars = Path.GetInvalidFileNameChars();
             var sanitized = new string(filename.Where(c => !invalidChars.Contains(c)).ToArray());
             return sanitized;
+        }
+
+        private void InitializePostProcessEngine()
+        {
+            activePersonaPostProcessScriptEngine = null;
+            string script;
+            try
+            {
+                script = GetActivePersonaPostProcessScript();
+            }
+            catch (Exception ex)
+            {
+                MyLog.LogWrite($"ポストプロセススクリプトの取得に失敗しました: {ex.Message} {ex.StackTrace}");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(script))
+            {
+                return;
+            }
+
+            var console = new
+            {
+                log = new Action<object>(msg =>
+                {
+                    msg ??= "null";
+                    MyLog.LogWrite($"[Jint.Engine(PostProcess)] {msg}");
+                })
+            };
+
+            try
+            {
+                MyLog.LogWrite("ポストプロセススクリプトエンジンを初期化しています...");
+                activePersonaPostProcessScriptEngine = new Engine(options =>
+                {
+                    options.TimeZone = GetTimeZoneInfo();
+                    options.LimitMemory(4_000_000);
+                    options.TimeoutInterval(TimeSpan.FromMilliseconds(100)); // 数が多いので短めに
+                    options.MaxStatements(10000);
+                    options.LimitRecursion(64);
+                    options.CancellationToken(cancellationToken: Program.cts.Token);
+                })
+                .SetValue("console", console);
+
+                activePersonaPostProcessScriptEngine.Execute(script);
+
+                var postProcessValue = activePersonaPostProcessScriptEngine.GetValue("postProcess");
+                if (!postProcessValue.IsObject())
+                {
+                    MyLog.LogWrite("post_process_script.js に postProcess 関数が定義されていません。");
+                    return;
+                }
+            }
+            catch (Jint.Runtime.JavaScriptException jse)
+            {
+                MyLog.LogWrite($"ポストスクリプトに問題があります: {jse.Message} {jse.StackTrace}");
+                script = $"// ポストプロセススクリプトに問題があるため自動でコメントアウトされました。\n // 問題: {jse.Message}\n\n/*\n{script}\n*/";
+                SaveActivePersonaPostProcessScript(script);
+
+                activePersonaPostProcessScriptEngine = null;
+            }
+            catch (Exception ex)
+            {
+                MyLog.LogWrite($"ポストプロセススクリプトエンジンの初期化に失敗しました: {ex.Message} {ex.StackTrace}");
+                activePersonaPostProcessScriptEngine = null;
+            }
+        }
+
+        // アクティブなペルソナのポストプロセススクリプトを適用する
+        public List<TalkEntry> ApplyPostProcessScript(List<TalkEntry> source)
+        {
+            // ポストプロセススクリプトエンジンが存在しない場合はそのまま返す
+            if (activePersonaPostProcessScriptEngine == null)
+            {
+                return source;
+            }
+
+            // sourceの各TalkEntryに対してポストプロセススクリプトを適用したクローンを返す
+            var clones = source.Select(CloneTalkEntry).ToList();
+            if (clones.Count == 0)
+            {
+                return source;
+            }
+
+            try
+            {
+                foreach (var clone in clones)
+                {
+                    if (clone.Role != TalkRole.Assistant)
+                    {
+                        // AI応答以外は処理しない
+                        continue;
+                    }
+                    clone.Text = ApplyPostProcessScript(clone.Text);
+                }
+            }
+            catch (Exception ex)
+            {
+                MyLog.LogWrite($"post_process_script.js の実行に失敗しました: {ex.Message} {ex.StackTrace}");
+            }
+
+            return clones;
+        }
+
+        public string ApplyPostProcessScript(string text)
+        { 
+            // ポストプロセススクリプトエンジンが存在しない場合はそのまま返す
+            if (activePersonaPostProcessScriptEngine == null)
+            {
+                return text;
+            }
+
+            string resultText = text;
+
+            try
+            {
+                JsValue result;
+
+                try
+                {
+                    result = activePersonaPostProcessScriptEngine.Invoke("postProcess", text);
+                }
+                catch (Exception e)
+                {
+                    MyLog.LogWrite($"post_process_script.js 実行中のエラー: {e.Message} {e.StackTrace}");
+                    return text;
+                }
+
+                try
+                {
+                    if (result.IsString())
+                    {
+                        resultText = result.AsString() ?? text;
+                    }
+                }
+                catch (Exception e)
+                {
+                    MyLog.LogWrite($"post_process_script.js の戻り値処理でエラーが発生しました: {e.Message} {e.StackTrace}");
+                }
+            }
+            catch (Exception ex)
+            {
+                MyLog.LogWrite($"post_process_script.js の実行に失敗しました: {ex.Message} {ex.StackTrace}");
+            }
+
+            return resultText;
+        }
+
+        public static TalkEntry CloneTalkEntry(TalkEntry source)
+        {
+            return new TalkEntry
+            {
+                Uuid = source.Uuid,
+                Role = source.Role,
+                Text = source.Text,
+                Reasoning = source.Reasoning,
+                ToolDetail = source.ToolDetail,
+                AttachmentId = source.AttachmentId != null ? new List<int>(source.AttachmentId) : null,
+                Timestamp = source.Timestamp,
+                Tokens = source.Tokens
+            };
         }
     }
 }

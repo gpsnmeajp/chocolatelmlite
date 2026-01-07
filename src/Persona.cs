@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -522,18 +523,19 @@ namespace CllDotnet
         {
             await Task.Delay(0);
             var (messages, total) = fileManager.GetTalkHistoryFromActivePersona(index, count);
+            var processedMessages = fileManager.ApplyPostProcessScript(messages);
 
             var stats = fileManager.GetTalkStatsFromActivePersona() ?? new TalkStats();
 
             // messagesの内容のMD5ハッシュを計算して返す
-            var messagesJson = Serializer.JsonSerialize(messages, false);
+            var messagesJson = Serializer.JsonSerialize(processedMessages, false);
             using var md5 = System.Security.Cryptography.MD5.Create();
             var hash = md5.ComputeHash(Encoding.UTF8.GetBytes(messagesJson));
             var hashString = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
 
             return new Dictionary<string, object>
             {
-                ["messages"] = messages,
+                ["messages"] = processedMessages,
                 ["hash"] = hashString,
                 ["total"] = total,
                 ["stats"] = stats
@@ -678,6 +680,12 @@ namespace CllDotnet
                 personaSettings.RemoveAttachment = removeAttachmentElement.GetBoolean();
             }
 
+            if (content.TryGetValue("post_process_script", out var postProcessScriptElement) && postProcessScriptElement.ValueKind == JsonValueKind.String)
+            {
+                var script = postProcessScriptElement.GetString() ?? string.Empty;
+                fileManager.SaveActivePersonaPostProcessScript(script);
+            }
+
             fileManager.SaveActivePersonaSettings(personaSettings);
 
             if (content.ContainsKey("system_prompt") && content["system_prompt"].ValueKind == JsonValueKind.String)
@@ -691,6 +699,7 @@ namespace CllDotnet
         {
             var settings = fileManager.GetActivePersonaSettings();
             var system_prompt = fileManager.GetSystemPromptFromActivePersona();
+            var post_process_script = fileManager.GetActivePersonaPostProcessScript();
 
             // YAMLからname, plain textからsystem_promptを抽出して返す
             var result = new Dictionary<string, object>();
@@ -708,6 +717,7 @@ namespace CllDotnet
                 result["dynamic_context_history_turns"] = settings.DynamicContextHistoryTurns;
                 result["remove_attachment"] = settings.RemoveAttachment;
                 result["system_prompt"] = system_prompt ?? "";
+                result["post_process_script"] = post_process_script;
             }
             return result;
         }

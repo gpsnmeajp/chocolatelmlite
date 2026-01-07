@@ -167,7 +167,7 @@ namespace CllDotnet
                     {
                         msg = "null";
                     }
-                    MyLog.LogWrite($"[Jint.Engine] {msg}");
+                    MyLog.LogWrite($"[Jint.Engine(Tool)] {msg}");
                     consolelog += msg.ToString() + "\n";
                 })
             };
