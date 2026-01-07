@@ -11,9 +11,6 @@ using ModelContextProtocol.Client;
 using Jint;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
 
 namespace CllDotnet
 {
@@ -105,12 +102,6 @@ namespace CllDotnet
             if (generalSettings.EnableImageGeneration)
             {
                 tools.Add(AIFunctionFactory.Create(GenerateImage));
-            }
-
-            if (generalSettings.EnableOllamaWebExtension)
-            {
-                tools.Add(AIFunctionFactory.Create(OllamaWebSearch));
-                tools.Add(AIFunctionFactory.Create(OllamaWebFetch));
             }
 
             if (generalSettings.EnableMcpTools)
@@ -302,105 +293,6 @@ namespace CllDotnet
             }
 
             return textResponse;
-        }
-
-        [Description("Ollama Web Search APIを使ってWeb検索を行います")]
-        async Task<string> OllamaWebSearch(
-            [Description("検索クエリ")] string query,
-            [Description("取得する最大件数(1-10)")] int maxResults = 5
-        )
-        {
-            await Task.Delay(0);
-            if (string.IsNullOrWhiteSpace(query))
-            {
-                throw new InvalidOperationException("検索クエリを入力してください。");
-            }
-
-            maxResults = Math.Clamp(maxResults, 1, 10);
-
-            var payload = new
-            {
-                query = query.Trim(),
-                max_results = maxResults
-            };
-
-            return await CallOllamaWebExtensionAsync("web_search", payload);
-        }
-
-        [Description("Ollama Web Fetch APIを使って指定URLの内容を取得します")]
-        async Task<string> OllamaWebFetch(
-            [Description("取得するURL")] string url
-        )
-        {
-            await Task.Delay(0);
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                throw new InvalidOperationException("URLを入力してください。");
-            }
-
-            var payload = new
-            {
-                url = url.Trim()
-            };
-
-            return await CallOllamaWebExtensionAsync("web_fetch", payload);
-        }
-
-        private async Task<string> CallOllamaWebExtensionAsync(string path, object payload)
-        {
-            var settings = _fileManager.generalSettings;
-            if (!settings.EnableOllamaWebExtension)
-            {
-                throw new InvalidOperationException("Ollama Web拡張は無効化されています。");
-            }
-
-            if (string.IsNullOrWhiteSpace(settings.OllamaWebExtensionEndpointUrl))
-            {
-                throw new InvalidOperationException("Ollama Web拡張のBase URLが設定されていません。");
-            }
-
-            if (string.IsNullOrWhiteSpace(settings.OllamaWebExtensionApiKey))
-            {
-                throw new InvalidOperationException("Ollama Web拡張のAPIキーが設定されていません。");
-            }
-
-            var baseUrl = settings.OllamaWebExtensionEndpointUrl.Trim();
-            if (!baseUrl.EndsWith("/"))
-            {
-                baseUrl += "/";
-            }
-
-            var requestUri = baseUrl + path.TrimStart('/');
-            var requestBody = JsonSerializer.Serialize(payload);
-
-            if (settings.DebugMode)
-            {
-                MyLog.DebugFileWrite($"ollama_{path}_request.json", requestBody);
-            }
-
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
-
-            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri);
-            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.OllamaWebExtensionApiKey);
-            httpRequest.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
-
-            using var httpResponse = await httpClient.SendAsync(httpRequest, Program.cts.Token);
-            var responseContent = await httpResponse.Content.ReadAsStringAsync();
-
-            if (settings.DebugMode)
-            {
-                MyLog.DebugFileWrite($"ollama_{path}_response.json", responseContent);
-            }
-
-            if (!httpResponse.IsSuccessStatusCode)
-            {
-                var message = $"Ollama Web拡張呼び出しに失敗しました。(HTTP {(int)httpResponse.StatusCode})";
-                MyLog.LogWrite($"{message} {responseContent}");
-                throw new InvalidOperationException($"{message} : {responseContent}");
-            }
-
-            return responseContent;
         }
 
         private class McpConfig

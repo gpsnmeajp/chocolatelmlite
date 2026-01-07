@@ -95,11 +95,6 @@ namespace CllDotnet
         public string ImageGenerationEndpointUrl { get; set; } = "";
         public string ImageGenerationApiKey { get; set; } = "";
         public string ImageGenerationModel { get; set; } = "google/gemini-2.5-flash-image";
-
-        public bool EnableOllamaWebExtension { get; set; } = false;
-        public string OllamaWebExtensionEndpointUrl { get; set; } = "https://ollama.com/api/";
-        public string OllamaWebExtensionApiKey { get; set; } = "";
-
         public bool DebugMode { get; set; } = false;
 
 
