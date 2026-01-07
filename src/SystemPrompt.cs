@@ -14,7 +14,7 @@ namespace CllDotnet
         public static string BuildSystemPrompt(FileManager fileManager)
         {
             var generalSettings = fileManager.generalSettings;
-            string systemPrompt = fileManager.GetSystemPromptFromActivePersona();
+            string systemPrompt = BuildRawSystemPrompt(fileManager);
             string additionalInfo = string.Empty;
 
             // 動的にシステムプロンプトを拡張する処理
@@ -39,6 +39,22 @@ namespace CllDotnet
             if (additionalInfo.Length > 0)
             {
                 systemPrompt += $"\n\n<system>{additionalInfo}</system>";
+            }
+
+            return systemPrompt;
+        }
+
+        // ペルソナのシステムプロンプトにシステム共通プロンプトを連結した生のシステムプロンプトを返す
+        public static string BuildRawSystemPrompt(FileManager fileManager)
+        {
+            string systemPrompt = fileManager.GetSystemPromptFromActivePersona();
+            string globalPrompt = fileManager.generalSettings?.GlobalSystemPrompt ?? string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(globalPrompt))
+            {
+                systemPrompt = string.IsNullOrWhiteSpace(systemPrompt)
+                    ? globalPrompt
+                    : $"{systemPrompt}\n\n{globalPrompt}";
             }
 
             return systemPrompt;

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using YamlDotNet.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -63,6 +64,7 @@ namespace CllDotnet
         public string LlmApiKey { get; set; } = "";
         public string DefaultModel { get; set; } = "google/gemini-2.5-flash";
         public string YourName { get; set; } = "あなた";
+        public string GlobalSystemPrompt { get; set; } = "";
         public int BreakReminderThreshold { get; set; } = 60;
         public int TalkHistoryCutoffThreshold { get; set; } = 40 * 1000; //40Kトークン
         public bool LocalOnly { get; set; } = false;
@@ -1258,7 +1260,7 @@ namespace CllDotnet
             // 会話履歴をすべて取得     
             var messages = activePersonaTalkEntriesCache;
             // システムプロンプトを取得
-            var rawSystemPrompt = GetSystemPromptFromActivePersona();
+            var rawSystemPrompt = SystemPrompt.BuildRawSystemPrompt(this);
             var builtSystemPrompt = SystemPrompt.BuildSystemPrompt(this); //会話統計取得処理はスキップさせていた(過去のメモ)
 
             // 総トークン数

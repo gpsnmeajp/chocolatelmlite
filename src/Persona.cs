@@ -161,6 +161,9 @@ namespace CllDotnet
                     case "YourName":
                         settings.YourName = kvp.Value.GetString() ?? settings.YourName;
                         break;
+                    case "GlobalSystemPrompt":
+                        settings.GlobalSystemPrompt = kvp.Value.GetString() ?? settings.GlobalSystemPrompt;
+                        break;
                     case "BreakReminderThreshold":
                         settings.BreakReminderThreshold = kvp.Value.GetInt32();
                         break;

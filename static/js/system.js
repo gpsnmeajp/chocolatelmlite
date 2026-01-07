@@ -13,6 +13,7 @@ const PRIMARY_FIELD_KEYS = [
   'LlmApiKey',
   'DefaultModel',
   'YourName',
+  'GlobalSystemPrompt',
   'BreakReminderThreshold',
   'TalkHistoryCutoffThreshold',
   'LocalOnly'
@@ -61,6 +62,16 @@ const FIELD_DEFINITIONS = {
     required: true,
     placeholder: 'あなた',
     order: 4
+  },
+  GlobalSystemPrompt: {
+    label: '共通システムプロンプト',
+    description: '全ペルソナのシステムプロンプトの末尾に連結される、システム全体で共有するプロンプトです。空欄の場合は無効です。',
+    valueType: 'string',
+    inputType: 'textarea',
+    allowEmpty: true,
+    placeholder: 'すべてのペルソナに共通する知識などを記入します。',
+    trim: false,
+    order: 5
   },
   BreakReminderThreshold: {
     label: '休憩おしらせ基準値',
@@ -554,18 +565,23 @@ function buildControlElement(key, definition, value, controlId) {
   }
 
   // テキストボックス、数値入力などのinput要素を生成
-  const input = document.createElement('input');
+  const isTextarea = definition.inputType === 'textarea';
+  const input = isTextarea ? document.createElement('textarea') : document.createElement('input');
   input.id = controlId;
   input.dataset.settingKey = key;
   input.autocomplete = definition.autocomplete || 'off';
 
   // inputTypeが定義されている場合はそれを使用、それ以外は値の型に基づいて決定
-  if (definition.inputType) {
-    input.type = definition.inputType;
-  } else if (definition.valueType === 'integer' || definition.valueType === 'number') {
-    input.type = 'number';
+  if (!isTextarea) {
+    if (definition.inputType) {
+      input.type = definition.inputType;
+    } else if (definition.valueType === 'integer' || definition.valueType === 'number') {
+      input.type = 'number';
+    } else {
+      input.type = 'text';
+    }
   } else {
-    input.type = 'text';
+    input.rows = Number.isFinite(definition.rows) ? Number(definition.rows) : 5;
   }
 
   // プレースホルダーを設定
@@ -574,7 +590,7 @@ function buildControlElement(key, definition, value, controlId) {
   }
 
   // 数値型の場合は最小値、最大値、ステップ値を設定
-  if (definition.valueType === 'integer' || definition.valueType === 'number') {
+  if (!isTextarea && (definition.valueType === 'integer' || definition.valueType === 'number')) {
     if (definition.min !== undefined) {
       input.min = String(definition.min);
     }
@@ -670,7 +686,7 @@ function collectFormValues() {
   const errors = [];
 
   elements.forEach((element) => {
-    if (!(element instanceof HTMLInputElement)) {
+    if (!(element instanceof HTMLInputElement) && !(element instanceof HTMLTextAreaElement)) {
       return;
     }
     const key = element.dataset.settingKey;
