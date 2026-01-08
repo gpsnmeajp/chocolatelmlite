@@ -298,7 +298,7 @@ const FIELD_DEFINITIONS = {
     inputType: 'url',
     allowEmpty: true,
     placeholder: 'http://localhost:50021',
-    note: 'エンジンごとにポート番号は異なります。',
+    note: 'エンジンごとにポート番号は異なります。(VOICEVOX: 50021, VOICEVOX Nemo: 50121, AivisSpeech: 10101)',
     order: 224
   },
   DebugMode: {
