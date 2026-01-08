@@ -12,6 +12,7 @@ using Microsoft.Extensions.AI;
 using ModelContextProtocol.Client;
 using Jint;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using OpenAI.Audio;
 using System.Collections.Concurrent;
@@ -23,23 +24,26 @@ namespace CllDotnet
         private readonly FileManager _fileManager;
         private readonly ConsoleMonitor _consoleMonitor;
         private readonly CancellationToken _cts;
-        private const string VoiceVoxBaseUrl = "http://localhost:50021";
-        private const int DefaultSpeakerId = 1;
-        private const bool EnableKatakanaEnglish = true;
-        private const bool EnableInterrogativeUpspeak = true;
-        private static readonly HttpClient HttpClient = new()
-        {
-            BaseAddress = new Uri(VoiceVoxBaseUrl),
-            Timeout = TimeSpan.FromSeconds(15)
-        };
         string currentMessageBuffer = "";
         Guid currentMessageId = Guid.Empty;
         ConcurrentQueue<SynthesisRequest> queue = new();
 
         class SynthesisRequest
         {
-            public Guid MessageId { get; set; }
-            public required string Text { get; set; }
+            public Guid MessageId = Guid.Empty;
+            public string Text = "";
+            public string VoiceVoxBaseUrl = "http://localhost:50021";
+            public int SpeakerId = 61;
+            public bool EnableKatakanaEnglish = true;
+            public bool EnableInterrogativeUpspeak = true;
+            public double? SpeedScale = 1.2;
+            public double? PitchScale = null;
+            public double? IntonationScale = null;
+            public double? VolumeScale = null;
+            public double? PrePhonemeLength = null;
+            public double? PostPhonemeLength = null;
+            public double? PauseLength = null;
+            public double? PauseLengthScale = null;
         }
 
         public VoiceVox(FileManager fileManager, ConsoleMonitor consoleMonitor, CancellationToken cts)
@@ -79,7 +83,7 @@ namespace CllDotnet
                 MyLog.LogWrite($"音声合成開始: {request.Text}");
                 try
                 {
-                    var audioData = await CreateSpeechAsync(request.Text, _cts);
+                    var audioData = await CreateSpeechAsync(request, _cts);
                     if (audioData.Length > 0)
                     {
                         string data = Convert.ToBase64String(audioData);
@@ -99,25 +103,124 @@ namespace CllDotnet
             }
         }
 
-        private async Task<byte[]> CreateSpeechAsync(string text, CancellationToken cancellationToken)
+        private async Task<byte[]> CreateSpeechAsync(SynthesisRequest request, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(text))
+            if (string.IsNullOrWhiteSpace(request.Text))
             {
                 return Array.Empty<byte>();
             }
 
-            var queryUrl = $"/audio_query?text={Uri.EscapeDataString(text)}&speaker={DefaultSpeakerId}&enable_katakana_english={EnableKatakanaEnglish.ToString().ToLowerInvariant()}";
+            using var HttpClient = new HttpClient { BaseAddress = new Uri(request.VoiceVoxBaseUrl) };
+
+            var queryUrl = $"/audio_query?text={Uri.EscapeDataString(request.Text)}&speaker={request.SpeakerId}&enable_katakana_english={request.EnableKatakanaEnglish.ToString().ToLowerInvariant()}";
             using var audioQueryResponse = await HttpClient.PostAsync(queryUrl, content: null, cancellationToken);
             audioQueryResponse.EnsureSuccessStatusCode();
 
             var audioQueryJson = await audioQueryResponse.Content.ReadAsStringAsync(cancellationToken);
-            using var audioQueryContent = new StringContent(audioQueryJson, System.Text.Encoding.UTF8, "application/json");
+            var audioQueryObject = JsonSerializer.Deserialize<JsonObject>(audioQueryJson) ?? new JsonObject();
 
-            var synthesisUrl = $"/synthesis?speaker={DefaultSpeakerId}&enable_interrogative_upspeak={EnableInterrogativeUpspeak.ToString().ToLowerInvariant()}";
+            void SetIfSpecified(string propertyName, double? value)
+            {
+                if (value.HasValue)
+                {
+                    audioQueryObject[propertyName] = value.Value;
+                }
+            }
+
+            SetIfSpecified("speedScale", request.SpeedScale);
+            SetIfSpecified("pitchScale", request.PitchScale);
+            SetIfSpecified("intonationScale", request.IntonationScale);
+            SetIfSpecified("volumeScale", request.VolumeScale);
+            SetIfSpecified("prePhonemeLength", request.PrePhonemeLength);
+            SetIfSpecified("postPhonemeLength", request.PostPhonemeLength);
+            SetIfSpecified("pauseLength", request.PauseLength);
+            SetIfSpecified("pauseLengthScale", request.PauseLengthScale);
+
+            var updatedAudioQueryJson = audioQueryObject.ToJsonString();
+            using var audioQueryContent = new StringContent(updatedAudioQueryJson, System.Text.Encoding.UTF8, "application/json");
+
+            var synthesisUrl = $"/synthesis?speaker={request.SpeakerId}&enable_interrogative_upspeak={request.EnableInterrogativeUpspeak.ToString().ToLowerInvariant()}";
             using var synthesisResponse = await HttpClient.PostAsync(synthesisUrl, audioQueryContent, cancellationToken);
             synthesisResponse.EnsureSuccessStatusCode();
 
             return await synthesisResponse.Content.ReadAsByteArrayAsync(cancellationToken);
+        }
+
+        public class Speaker
+        {
+            public string Name { get; set; } = string.Empty;
+            public string StyleName { get; set; } = string.Empty;
+            public int SpeakerId { get; set; }
+        }
+
+        public List<Speaker> GetAvailableSpeakers()
+        {
+            var speakers = new List<Speaker>();
+
+            try
+            {
+                using var httpClient = new HttpClient { BaseAddress = new Uri("http://localhost:50021") };
+                using var response = httpClient.GetAsync("/speakers", _cts).GetAwaiter().GetResult();
+                response.EnsureSuccessStatusCode();
+
+                var json = response.Content.ReadAsStringAsync(_cts).GetAwaiter().GetResult();
+                var speakerArray = JsonSerializer.Deserialize<JsonArray>(json);
+                if (speakerArray is null)
+                {
+                    return speakers;
+                }
+
+                foreach (var speakerNode in speakerArray)
+                {
+                    if (speakerNode is not JsonObject speakerObj)
+                    {
+                        continue;
+                    }
+
+                    var name = speakerObj["name"]?.GetValue<string>();
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        continue;
+                    }
+
+                    if (speakerObj["styles"] is not JsonArray stylesArray)
+                    {
+                        continue;
+                    }
+
+                    foreach (var styleNode in stylesArray)
+                    {
+                        if (styleNode is not JsonObject styleObj)
+                        {
+                            continue;
+                        }
+
+                        var styleName = styleObj["name"]?.GetValue<string>();
+                        var styleId = styleObj["id"]?.GetValue<int>();
+                        if (string.IsNullOrWhiteSpace(styleName) || styleId is null)
+                        {
+                            continue;
+                        }
+
+                        speakers.Add(new Speaker
+                        {
+                            Name = name,
+                            StyleName = styleName,
+                            SpeakerId = styleId.Value
+                        });
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                MyLog.LogWrite($"話者一覧取得に失敗: {ex.Message} {ex.StackTrace}");
+            }
+
+            return speakers;
         }
 
         // 新しいメッセージの開始
