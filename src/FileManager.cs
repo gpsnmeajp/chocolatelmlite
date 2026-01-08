@@ -108,7 +108,7 @@ namespace CllDotnet
         public string ImageGenerationEndpointUrl { get; set; } = "";
         public string ImageGenerationApiKey { get; set; } = "";
         public string ImageGenerationModel { get; set; } = "google/gemini-2.5-flash-image";
-        public string VoiceVoxBaseUrl { get; set; } = "http://localhost:50021";
+        public string VoiceVoxBaseUrl { get; set; } = "";
         public bool DebugMode { get; set; } = false;
 
 
