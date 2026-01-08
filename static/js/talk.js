@@ -44,6 +44,10 @@ const state = {
   lastPingReceivedAt: 0,           // 最終ping受信時刻
   liveGeneration: null,            // ストリーミング中のAI応答
   isCanceling: false,              // キャンセルリクエスト中フラグ
+  speechQueue: [],                 // 音声再生待ちキュー
+  isSpeechPlaying: false,          // 音声再生中フラグ
+  currentSpeechAudio: null,        // 再生中のAudio要素
+  currentSpeechUrl: null,          // 再生中オブジェクトURL
 };
 
 // 自動スクロールを継続するための閾値（px）
@@ -2918,10 +2922,112 @@ function handleWebSocketMessage(event) {
     return;
   }
 
+  // 音声データを受信した場合はキューに追加
+  if (typeof payload.speak === 'string') {
+    enqueueSpeechAudio(payload.speak);
+  }
+
   // ステータスブロードキャスト（AI応答生成の進行状況）
   if (typeof payload.status === 'string') {
     handleStatusBroadcast(payload);
   }
+}
+
+// 受信した音声データを順番に再生する
+function enqueueSpeechAudio(base64Audio) {
+  if (typeof base64Audio !== 'string') {
+    return;
+  }
+
+  // data URI 形式で届く可能性も考慮してヘッダーを除去
+  const sanitized = base64Audio.replace(/^data:[^;]+;base64,/, '').trim();
+  if (!sanitized) {
+    return;
+  }
+
+  state.speechQueue.push(sanitized);
+  if (!state.isSpeechPlaying) {
+    playNextSpeechAudio();
+  }
+}
+
+// キューの先頭を再生し、終了後に次を再生する
+function playNextSpeechAudio() {
+  if (state.isSpeechPlaying) {
+    return;
+  }
+
+  const next = state.speechQueue.shift();
+  if (!next) {
+    return;
+  }
+
+  state.isSpeechPlaying = true;
+
+  const audioBytes = decodeBase64ToUint8(next);
+  const blob = new Blob([audioBytes], { type: 'audio/wav' });
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+
+  state.currentSpeechAudio = audio;
+  state.currentSpeechUrl = url;
+
+  const cleanup = () => {
+    if (state.currentSpeechAudio) {
+      state.currentSpeechAudio.pause();
+    }
+    if (state.currentSpeechUrl) {
+      URL.revokeObjectURL(state.currentSpeechUrl);
+    }
+    state.currentSpeechAudio = null;
+    state.currentSpeechUrl = null;
+    state.isSpeechPlaying = false;
+  };
+
+  const handleCompletion = () => {
+    cleanup();
+    playNextSpeechAudio();
+  };
+
+  audio.addEventListener('ended', handleCompletion, { once: true });
+  audio.addEventListener('error', () => {
+    console.warn('Audio playback failed. Skipping to next.');
+    handleCompletion();
+  }, { once: true });
+
+  audio.play().catch(error => {
+    console.warn('Audio playback could not start:', error);
+    handleCompletion();
+  });
+}
+
+// base64文字列をUint8Arrayにデコード
+function decodeBase64ToUint8(base64) {
+  const binary = atob(base64);
+  const length = binary.length;
+  const bytes = new Uint8Array(length);
+  for (let i = 0; i < length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// 再生中の音声を停止し、キューをクリア
+function stopSpeechPlayback() {
+  state.speechQueue.length = 0;
+  if (state.currentSpeechAudio) {
+    try {
+      state.currentSpeechAudio.pause();
+    } catch (error) {
+      console.warn('Failed to pause speech audio:', error);
+    }
+  }
+  if (state.currentSpeechUrl) {
+    URL.revokeObjectURL(state.currentSpeechUrl);
+  }
+  state.currentSpeechAudio = null;
+  state.currentSpeechUrl = null;
+  state.isSpeechPlaying = false;
 }
 
 /**
@@ -3115,6 +3221,9 @@ function shutdownRealtime() {
 
   // 再接続タイマーをクリア
   clearWebSocketReconnectTimer();
+
+  // 音声再生を停止
+  stopSpeechPlayback();
 
   // WebSocket接続を閉じる
   if (state.websocket) {

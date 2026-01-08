@@ -26,12 +26,14 @@ namespace CllDotnet
         CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         volatile bool isGenerating = false;
         Tools tools;
+        VoiceVox voiceVox;
         string responseText = "";
-        public LLM(FileManager fileManager, ConsoleMonitor consoleMonitor, Tools tools)
+        public LLM(FileManager fileManager, ConsoleMonitor consoleMonitor, Tools tools, VoiceVox voiceVox)
         {
             this.fileManager = fileManager;
             this.consoleMonitor = consoleMonitor;
             this.tools = tools;
+            this.voiceVox = voiceVox;
         }
 
         public void AllContentLogger(string prefix, IList<AIContent> contents)
@@ -313,6 +315,7 @@ namespace CllDotnet
 
                         MyLog.LogWrite($"生成開始...");
                         await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "started" } });
+                        await voiceVox.InitializeAsync();
                         ChatResponse? response = null;
                         try
                         {
@@ -347,6 +350,7 @@ namespace CllDotnet
                                 // MyLog.LogWrite($"[進行中] {response.Text}");
                                 string postProcessTextInGenerating = fileManager.ApplyPostProcessScript(responseText); // 生成中にもポストプロセスを適用
                                 await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "generating" }, { "response", postProcessTextInGenerating } });
+                                await voiceVox.ProgressAsync(responseText);
                                 Program.cts.Token.ThrowIfCancellationRequested();
                             }
 
@@ -441,6 +445,7 @@ namespace CllDotnet
 
                         string postProcessText = fileManager.ApplyPostProcessScript(finalResponseText);
                         await Broadcaster.Broadcast(new Dictionary<string, object> { { "status", "completed" }, { "response", postProcessText }, { "error", "" } });
+                        await voiceVox.CompleteAsync(finalResponseText);
 
                         // 生成完了Webhook
                         if (fileManager.generalSettings.EnableWebhook)

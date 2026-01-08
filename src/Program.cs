@@ -154,9 +154,13 @@ namespace CllDotnet
                     await using Tools tools = new Tools(imageGenerater, fileManager, consoleMonitor);
                     await tools.InitToolsAsync();
 
+                    // 音声合成の初期化
+                    MyLog.LogWrite("音声合成の初期化");
+                    VoiceVox voiceVox = new VoiceVox(fileManager, consoleMonitor, cts.Token);
+
                     // LLMの初期化
                     MyLog.LogWrite("LLMの初期化");
-                    LLM llm = new LLM(fileManager, consoleMonitor, tools);
+                    LLM llm = new LLM(fileManager, consoleMonitor, tools, voiceVox);
 
                     // ペルソナの初期化
                     MyLog.LogWrite("ペルソナの初期化");
