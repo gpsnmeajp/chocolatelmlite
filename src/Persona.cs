@@ -263,6 +263,9 @@ namespace CllDotnet
                     case "ImageGenerationModel":
                         settings.ImageGenerationModel = kvp.Value.GetString() ?? settings.ImageGenerationModel;
                         break;
+                    case "VoiceVoxBaseUrl":
+                        settings.VoiceVoxBaseUrl = kvp.Value.GetString() ?? settings.VoiceVoxBaseUrl;
+                        break;
                     default:
                         // 未知のキーは無視する
                         MyLog.LogWrite($"不明な一般設定キー: {kvp.Key}");
@@ -626,6 +629,36 @@ namespace CllDotnet
             // nameとsystem_promptを抽出して保存する
             var personaSettings = fileManager.GetActivePersonaSettings();
 
+            int ParseIntOrDefault(JsonElement element, int defaultValue)
+            {
+                return element.ValueKind switch
+                {
+                    JsonValueKind.Number => element.GetInt32(),
+                    JsonValueKind.String when int.TryParse(element.GetString(), out var parsed) => parsed,
+                    JsonValueKind.Null => defaultValue,
+                    _ => defaultValue
+                };
+            }
+
+            double? ParseNullableDouble(JsonElement element)
+            {
+                return element.ValueKind switch
+                {
+                    JsonValueKind.Number => element.GetDouble(),
+                    JsonValueKind.String when double.TryParse(element.GetString(), out var parsed) => parsed,
+                    JsonValueKind.Null => null,
+                    _ => null
+                };
+            }
+
+            void ApplyNullableDouble(string key, Action<double?> setter)
+            {
+                if (content.TryGetValue(key, out var element))
+                {
+                    setter(ParseNullableDouble(element));
+                }
+            }
+
             if (content.ContainsKey("name") && content["name"].ValueKind == JsonValueKind.String)
             {
                 personaSettings.Name = content["name"].GetString() ?? "";
@@ -686,6 +719,20 @@ namespace CllDotnet
                 fileManager.SaveActivePersonaPostProcessScript(script);
             }
 
+            if (content.TryGetValue("voicevox_speaker_id", out var voiceVoxSpeakerElement))
+            {
+                personaSettings.VoiceVoxSpeakerId = ParseIntOrDefault(voiceVoxSpeakerElement, -1);
+            }
+
+            ApplyNullableDouble("voicevox_speed_scale", value => personaSettings.VoiceVoxSpeedScale = value);
+            ApplyNullableDouble("voicevox_pitch_scale", value => personaSettings.VoiceVoxPitchScale = value);
+            ApplyNullableDouble("voicevox_intonation_scale", value => personaSettings.VoiceVoxIntonationScale = value);
+            ApplyNullableDouble("voicevox_volume_scale", value => personaSettings.VoiceVoxVolumeScale = value);
+            ApplyNullableDouble("voicevox_pre_phoneme_length", value => personaSettings.VoiceVoxPrePhonemeLength = value);
+            ApplyNullableDouble("voicevox_post_phoneme_length", value => personaSettings.VoiceVoxPostPhonemeLength = value);
+            ApplyNullableDouble("voicevox_pause_length", value => personaSettings.VoiceVoxPauseLength = value);
+            ApplyNullableDouble("voicevox_pause_length_scale", value => personaSettings.VoiceVoxPauseLengthScale = value);
+
             fileManager.SaveActivePersonaSettings(personaSettings);
 
             if (content.ContainsKey("system_prompt") && content["system_prompt"].ValueKind == JsonValueKind.String)
@@ -702,7 +749,7 @@ namespace CllDotnet
             var post_process_script = fileManager.GetActivePersonaPostProcessScript();
 
             // YAMLからname, plain textからsystem_promptを抽出して返す
-            var result = new Dictionary<string, object>();
+            var result = new Dictionary<string, object?>();
             if (settings != null)
             {
                 result["name"] = settings.Name;
@@ -716,10 +763,30 @@ namespace CllDotnet
                 result["dynamic_context_url"] = settings.DynamicContextUrl;
                 result["dynamic_context_history_turns"] = settings.DynamicContextHistoryTurns;
                 result["remove_attachment"] = settings.RemoveAttachment;
+                result["voicevox_speaker_id"] = settings.VoiceVoxSpeakerId;
+                result["voicevox_speed_scale"] = settings.VoiceVoxSpeedScale;
+                result["voicevox_pitch_scale"] = settings.VoiceVoxPitchScale;
+                result["voicevox_intonation_scale"] = settings.VoiceVoxIntonationScale;
+                result["voicevox_volume_scale"] = settings.VoiceVoxVolumeScale;
+                result["voicevox_pre_phoneme_length"] = settings.VoiceVoxPrePhonemeLength;
+                result["voicevox_post_phoneme_length"] = settings.VoiceVoxPostPhonemeLength;
+                result["voicevox_pause_length"] = settings.VoiceVoxPauseLength;
+                result["voicevox_pause_length_scale"] = settings.VoiceVoxPauseLengthScale;
                 result["system_prompt"] = system_prompt ?? "";
                 result["post_process_script"] = post_process_script;
             }
-            return result;
+            
+            // nullでないキーのみ抽出して返す
+            var result2 = new Dictionary<string, object>();
+            foreach (var kvp in result)
+            {
+                if (kvp.Value != null)
+                {
+                    result2[kvp.Key] = kvp.Value;
+                }
+            }
+
+            return result2;
         }
 
         public Dictionary<string, object> GetActivePersonaMemory()

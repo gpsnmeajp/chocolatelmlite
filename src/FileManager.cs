@@ -27,6 +27,15 @@ namespace CllDotnet
         public string DynamicContextUrl { get; set; } = "";
         public int DynamicContextHistoryTurns { get; set; } = 8;
         public bool RemoveAttachment { get; set; } = false;
+        public int VoiceVoxSpeakerId = -1; // -1は未設定
+        public double? VoiceVoxSpeedScale = null;
+        public double? VoiceVoxPitchScale = null;
+        public double? VoiceVoxIntonationScale = null;
+        public double? VoiceVoxVolumeScale = null;
+        public double? VoiceVoxPrePhonemeLength = null;
+        public double? VoiceVoxPostPhonemeLength = null;
+        public double? VoiceVoxPauseLength = null;
+        public double? VoiceVoxPauseLengthScale = null;
     }
 
     public class YamlKeywordKnowledge
@@ -99,6 +108,7 @@ namespace CllDotnet
         public string ImageGenerationEndpointUrl { get; set; } = "";
         public string ImageGenerationApiKey { get; set; } = "";
         public string ImageGenerationModel { get; set; } = "google/gemini-2.5-flash-image";
+        public string VoiceVoxBaseUrl { get; set; } = "http://localhost:50021";
         public bool DebugMode { get; set; } = false;
 
 

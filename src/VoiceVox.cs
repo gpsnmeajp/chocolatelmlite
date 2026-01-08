@@ -32,11 +32,11 @@ namespace CllDotnet
         {
             public Guid MessageId = Guid.Empty;
             public string Text = "";
-            public string VoiceVoxBaseUrl = "http://localhost:50021";
-            public int SpeakerId = 61;
+            public string VoiceVoxBaseUrl = "";
             public bool EnableKatakanaEnglish = true;
             public bool EnableInterrogativeUpspeak = true;
-            public double? SpeedScale = 1.2;
+            public int SpeakerId = -1;
+            public double? SpeedScale = null;
             public double? PitchScale = null;
             public double? IntonationScale = null;
             public double? VolumeScale = null;
@@ -76,13 +76,59 @@ namespace CllDotnet
             }, cts);
         }
 
+        private string GetVoiceVoxBaseUrl()
+        {
+            var configured = _fileManager.generalSettings?.VoiceVoxBaseUrl?.Trim();
+            if (!string.IsNullOrWhiteSpace(configured) &&
+                Uri.TryCreate(configured, UriKind.Absolute, out var uri) &&
+                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                return uri.ToString();
+            }
+            return "";
+        }
+
+        private void EnqueueSpeech(string text)
+        {
+            text = text.Trim().Replace("**", "");
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+            var personaSettings = _fileManager.GetActivePersonaSettings();
+            if(personaSettings == null || personaSettings.VoiceVoxSpeakerId == -1)
+            {
+                return;
+            }
+            MyLog.LogWrite($"音声合成キューに追加: {text} / {currentMessageId} / {GetVoiceVoxBaseUrl()}" +
+            $"(Speaker ID: {personaSettings.VoiceVoxSpeakerId}, Speed: {personaSettings.VoiceVoxSpeedScale}, Pitch: {personaSettings.VoiceVoxPitchScale}" +
+            $", Intonation: {personaSettings.VoiceVoxIntonationScale}, Volume: {personaSettings.VoiceVoxVolumeScale}" +
+            $", PrePhoneme: {personaSettings.VoiceVoxPrePhonemeLength}, PostPhoneme: {personaSettings.VoiceVoxPostPhonemeLength}" +
+            $", PauseLength: {personaSettings.VoiceVoxPauseLength}, PauseLengthScale: {personaSettings.VoiceVoxPauseLengthScale})");
+            queue.Enqueue(new SynthesisRequest
+            {
+                VoiceVoxBaseUrl = GetVoiceVoxBaseUrl(),
+                Text = text,
+                MessageId = currentMessageId,
+                SpeakerId = personaSettings.VoiceVoxSpeakerId,
+                SpeedScale = personaSettings.VoiceVoxSpeedScale,
+                PitchScale = personaSettings.VoiceVoxPitchScale,
+                IntonationScale = personaSettings.VoiceVoxIntonationScale,
+                VolumeScale = personaSettings.VoiceVoxVolumeScale,
+                PrePhonemeLength = personaSettings.VoiceVoxPrePhonemeLength,
+                PostPhonemeLength = personaSettings.VoiceVoxPostPhonemeLength,
+                PauseLength = personaSettings.VoiceVoxPauseLength,
+                PauseLengthScale = personaSettings.VoiceVoxPauseLengthScale
+            });
+        }
+
         private async Task CheckBufferAsync()
         {
             while (queue.TryDequeue(out var request))
             {
-                MyLog.LogWrite($"音声合成開始: {request.Text}");
                 try
                 {
+                    MyLog.LogWrite($"音声合成開始: {request.Text}");
                     var audioData = await CreateSpeechAsync(request, _cts);
                     if (audioData.Length > 0)
                     {
@@ -153,21 +199,26 @@ namespace CllDotnet
             public int SpeakerId { get; set; }
         }
 
-        public List<Speaker> GetAvailableSpeakers()
+        public async Task<Dictionary<string, object>> GetAvailableSpeakersAsync()
         {
             var speakers = new List<Speaker>();
 
             try
             {
-                using var httpClient = new HttpClient { BaseAddress = new Uri("http://localhost:50021") };
-                using var response = httpClient.GetAsync("/speakers", _cts).GetAwaiter().GetResult();
+                var baseUrl = GetVoiceVoxBaseUrl();
+                if(string.IsNullOrWhiteSpace(baseUrl))
+                {
+                    return new Dictionary<string, object>();
+                }
+                using var httpClient = new HttpClient { BaseAddress = new Uri(baseUrl) };
+                using var response = await httpClient.GetAsync("/speakers", _cts);
                 response.EnsureSuccessStatusCode();
 
-                var json = response.Content.ReadAsStringAsync(_cts).GetAwaiter().GetResult();
+                var json = await response.Content.ReadAsStringAsync(_cts);
                 var speakerArray = JsonSerializer.Deserialize<JsonArray>(json);
                 if (speakerArray is null)
                 {
-                    return speakers;
+                    return new Dictionary<string, object>();
                 }
 
                 foreach (var speakerNode in speakerArray)
@@ -210,6 +261,15 @@ namespace CllDotnet
                         });
                     }
                 }
+
+                // 話者名とスタイル名を組み合わせた辞書を作成
+                var speakerDict = new Dictionary<string, object>();
+                foreach (var speaker in speakers)
+                {
+                    var key = $"{speaker.Name} - {speaker.StyleName}";
+                    speakerDict[key] = speaker.SpeakerId;
+                }
+                return speakerDict;
             }
             catch (OperationCanceledException)
             {
@@ -220,7 +280,7 @@ namespace CllDotnet
                 MyLog.LogWrite($"話者一覧取得に失敗: {ex.Message} {ex.StackTrace}");
             }
 
-            return speakers;
+            return new Dictionary<string, object>();
         }
 
         // 新しいメッセージの開始
@@ -270,13 +330,8 @@ namespace CllDotnet
                 }
 
                 string segment = diff.Substring(0, splitIndex);
-                // 音声合成キューに回す処理をここに追加
-                MyLog.LogWrite($"音声合成キューに追加: {segment.Trim()}");
-                queue.Enqueue(new SynthesisRequest
-                {
-                    MessageId = currentMessageId,
-                    Text = segment.Trim()
-                });
+                // 音声合成キューに回す処理をここに追加                
+                EnqueueSpeech(segment);
 
                 currentMessageBuffer += segment;
             }
@@ -296,13 +351,7 @@ namespace CllDotnet
             string diff = text.Substring(currentMessageBuffer.Length);
             if (!string.IsNullOrEmpty(diff))
             {
-                // 音声合成キューに回す処理をここに追加
-                MyLog.LogWrite($"音声合成キューに追加: {diff.Trim()}");
-                queue.Enqueue(new SynthesisRequest
-                {
-                    MessageId = currentMessageId,
-                    Text = diff.Trim()
-                });
+                EnqueueSpeech(diff);
             }
         }
     }

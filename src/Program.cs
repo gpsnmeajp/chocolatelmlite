@@ -187,7 +187,7 @@ namespace CllDotnet
 
                     // Webサーバーの起動
                     MyLog.LogWrite("Webサーバーの起動");
-                    WebServer server = new WebServer(consoleMonitor, persona);
+                    WebServer server = new WebServer(consoleMonitor, persona, voiceVox);
                     Broadcaster.Initialize(server.Broadcast);
 
                     // Windowsならブラウザを起動する

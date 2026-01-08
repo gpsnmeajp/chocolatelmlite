@@ -25,6 +25,62 @@ const assetState = assetConfig.reduce((acc, entry) => {
   return acc;
 }, {});
 
+let desiredVoicevoxSpeakerId = null;
+
+function parseNumberInput(value, { allowNegative = false, integer = false } = {}) {
+  const text = (value ?? '').toString().trim();
+  if (!text) {
+    return null;
+  }
+
+  const parsed = integer ? Number.parseInt(text, 10) : Number(text);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  if (!allowNegative && parsed < 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function normalizeNumberForInput(value, options) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const parsed = parseNumberInput(value, options);
+  return parsed === null ? '' : String(parsed);
+}
+
+function setVoicevoxSpeakerSelection(speakerId) {
+  const parsed = parseNumberInput(speakerId, { allowNegative: true, integer: true });
+  desiredVoicevoxSpeakerId = Number.isFinite(parsed) ? parsed : null;
+  applyVoicevoxSpeakerSelection();
+}
+
+function applyVoicevoxSpeakerSelection() {
+  const select = document.getElementById('voicevoxSpeakerId');
+  if (!select) {
+    return;
+  }
+
+  const targetValue = desiredVoicevoxSpeakerId === null ? '' : String(desiredVoicevoxSpeakerId);
+  select.value = targetValue;
+
+  if (targetValue && select.value !== targetValue) {
+    const exists = Array.from(select.options).some((option) => option.value === targetValue);
+    if (!exists) {
+      const fallbackOption = document.createElement('option');
+      fallbackOption.value = targetValue;
+      fallbackOption.textContent = `ID ${targetValue} (未取得)`;
+      select.appendChild(fallbackOption);
+    }
+    select.value = targetValue;
+  }
+}
+
 /**
  * 初期化関数
  * ページ読み込み時に設定を読み込む
@@ -34,7 +90,7 @@ async function init() {
   setupPostPromptControls();
   setupDynamicContextControls();
   setupKeywordKnowledgeControls();
-  await Promise.all([loadSettings(), loadPersonaAssets(), loadGeneralSettings(), loadKeywordKnowledgeEntries(), loadMemoryEntries()]);
+  await Promise.all([loadSettings(), loadPersonaAssets(), loadGeneralSettings(), loadKeywordKnowledgeEntries(), loadMemoryEntries(), loadVoicevoxSpeakers()]);
 }
 
 /**
@@ -61,6 +117,15 @@ async function loadSettings() {
     const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
     const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
     const removeAttachmentInput = document.getElementById('removeAttachment');
+    const voicevoxSpeakerIdInput = document.getElementById('voicevoxSpeakerId');
+    const voicevoxSpeedScaleInput = document.getElementById('voicevoxSpeedScale');
+    const voicevoxPitchScaleInput = document.getElementById('voicevoxPitchScale');
+    const voicevoxIntonationScaleInput = document.getElementById('voicevoxIntonationScale');
+    const voicevoxVolumeScaleInput = document.getElementById('voicevoxVolumeScale');
+    const voicevoxPrePhonemeLengthInput = document.getElementById('voicevoxPrePhonemeLength');
+    const voicevoxPostPhonemeLengthInput = document.getElementById('voicevoxPostPhonemeLength');
+    const voicevoxPauseLengthInput = document.getElementById('voicevoxPauseLength');
+    const voicevoxPauseLengthScaleInput = document.getElementById('voicevoxPauseLengthScale');
 
     // 各フィールドに値を設定
     if (displayInput) {
@@ -123,6 +188,32 @@ async function loadSettings() {
       removeAttachmentInput.checked = Boolean(data?.remove_attachment);
     }
 
+    setVoicevoxSpeakerSelection(data?.voicevox_speaker_id);
+    if (voicevoxSpeedScaleInput) {
+      voicevoxSpeedScaleInput.value = normalizeNumberForInput(data?.voicevox_speed_scale);
+    }
+    if (voicevoxPitchScaleInput) {
+      voicevoxPitchScaleInput.value = normalizeNumberForInput(data?.voicevox_pitch_scale, { allowNegative: true });
+    }
+    if (voicevoxIntonationScaleInput) {
+      voicevoxIntonationScaleInput.value = normalizeNumberForInput(data?.voicevox_intonation_scale);
+    }
+    if (voicevoxVolumeScaleInput) {
+      voicevoxVolumeScaleInput.value = normalizeNumberForInput(data?.voicevox_volume_scale);
+    }
+    if (voicevoxPrePhonemeLengthInput) {
+      voicevoxPrePhonemeLengthInput.value = normalizeNumberForInput(data?.voicevox_pre_phoneme_length);
+    }
+    if (voicevoxPostPhonemeLengthInput) {
+      voicevoxPostPhonemeLengthInput.value = normalizeNumberForInput(data?.voicevox_post_phoneme_length);
+    }
+    if (voicevoxPauseLengthInput) {
+      voicevoxPauseLengthInput.value = normalizeNumberForInput(data?.voicevox_pause_length);
+    }
+    if (voicevoxPauseLengthScaleInput) {
+      voicevoxPauseLengthScaleInput.value = normalizeNumberForInput(data?.voicevox_pause_length_scale);
+    }
+
     updatePostPromptState();
     // DynamicContext機能のUIの状態を更新（有効/無効に応じてURL入力欄の活性/非活性を切り替え）
     updateDynamicContextState();
@@ -143,7 +234,16 @@ async function loadSettings() {
       // DynamicContextのURL設定を保存（変更検知に使用）
       dynamicContextUrl: dynamicContextUrlInput?.value ?? '',
       dynamicContextHistoryTurns: dynamicContextHistoryTurnsInput?.value ?? '',
-      removeAttachment: removeAttachmentInput?.checked ?? false
+      removeAttachment: removeAttachmentInput?.checked ?? false,
+      voicevoxSpeakerId: voicevoxSpeakerIdInput?.value ?? '',
+      voicevoxSpeedScale: voicevoxSpeedScaleInput?.value ?? '',
+      voicevoxPitchScale: voicevoxPitchScaleInput?.value ?? '',
+      voicevoxIntonationScale: voicevoxIntonationScaleInput?.value ?? '',
+      voicevoxVolumeScale: voicevoxVolumeScaleInput?.value ?? '',
+      voicevoxPrePhonemeLength: voicevoxPrePhonemeLengthInput?.value ?? '',
+      voicevoxPostPhonemeLength: voicevoxPostPhonemeLengthInput?.value ?? '',
+      voicevoxPauseLength: voicevoxPauseLengthInput?.value ?? '',
+      voicevoxPauseLengthScale: voicevoxPauseLengthScaleInput?.value ?? ''
     };
   } catch (error) {
     console.error('Failed to load settings:', error);
@@ -258,6 +358,57 @@ function setTurnsWithinBounds(input) {
  */
 async function loadPersonaAssets() {
   await Promise.all(assetConfig.map(loadPersonaAsset));
+}
+
+function createVoicevoxUnsetOption() {
+  const option = document.createElement('option');
+  option.value = '';
+  option.textContent = '未設定（オフ）';
+  return option;
+}
+
+async function loadVoicevoxSpeakers() {
+  const select = document.getElementById('voicevoxSpeakerId');
+  if (!select) {
+    return;
+  }
+
+  select.innerHTML = '';
+  select.appendChild(createVoicevoxUnsetOption());
+  const loadingOption = document.createElement('option');
+  loadingOption.disabled = true;
+  loadingOption.textContent = '話者一覧を読み込み中...';
+  select.appendChild(loadingOption);
+  select.value = desiredVoicevoxSpeakerId === null ? '' : String(desiredVoicevoxSpeakerId);
+
+  try {
+    const data = await fetchJson('/api/voicevox/speakers');
+    const entries = Object.entries(data ?? {})
+      .map(([label, id]) => ({ label, id: parseNumberInput(id, { allowNegative: true, integer: true }) }))
+      .filter((entry) => Number.isFinite(entry.id));
+
+    entries.sort((a, b) => a.label.localeCompare(b.label, 'ja'));
+
+    select.innerHTML = '';
+    select.appendChild(createVoicevoxUnsetOption());
+
+    entries.forEach((entry) => {
+      const option = document.createElement('option');
+      option.value = String(entry.id);
+      option.textContent = `${entry.label} (${entry.id})`;
+      select.appendChild(option);
+    });
+  } catch (error) {
+    console.error('Failed to load VoiceVox speakers:', error);
+    select.innerHTML = '';
+    select.appendChild(createVoicevoxUnsetOption());
+    const errorOption = document.createElement('option');
+    errorOption.disabled = true;
+    errorOption.textContent = '話者一覧を取得できませんでした';
+    select.appendChild(errorOption);
+  } finally {
+    applyVoicevoxSpeakerSelection();
+  }
 }
 
 /**
@@ -1113,6 +1264,15 @@ async function saveSettings() {
   const parsedTurns = Number.parseInt(turnsInput?.value ?? '', 10);
   payload.dynamic_context_history_turns = Number.isFinite(parsedTurns) && parsedTurns >= 0 ? parsedTurns : 8;
   payload.remove_attachment = document.getElementById('removeAttachment')?.checked ?? false;
+  payload.voicevox_speaker_id = parseNumberInput(document.getElementById('voicevoxSpeakerId')?.value, { allowNegative: true, integer: true });
+  payload.voicevox_speed_scale = parseNumberInput(document.getElementById('voicevoxSpeedScale')?.value);
+  payload.voicevox_pitch_scale = parseNumberInput(document.getElementById('voicevoxPitchScale')?.value, { allowNegative: true });
+  payload.voicevox_intonation_scale = parseNumberInput(document.getElementById('voicevoxIntonationScale')?.value);
+  payload.voicevox_volume_scale = parseNumberInput(document.getElementById('voicevoxVolumeScale')?.value);
+  payload.voicevox_pre_phoneme_length = parseNumberInput(document.getElementById('voicevoxPrePhonemeLength')?.value);
+  payload.voicevox_post_phoneme_length = parseNumberInput(document.getElementById('voicevoxPostPhonemeLength')?.value);
+  payload.voicevox_pause_length = parseNumberInput(document.getElementById('voicevoxPauseLength')?.value);
+  payload.voicevox_pause_length_scale = parseNumberInput(document.getElementById('voicevoxPauseLengthScale')?.value);
 
   try {
     // 二重送信を防ぐため、ボタンを無効化
@@ -1147,7 +1307,16 @@ async function saveSettings() {
       enableDynamicContext: payload.enable_dynamic_context,
       dynamicContextUrl: payload.dynamic_context_url,
       dynamicContextHistoryTurns: String(payload.dynamic_context_history_turns),
-      removeAttachment: payload.remove_attachment
+      removeAttachment: payload.remove_attachment,
+      voicevoxSpeakerId: normalizeNumberForInput(payload.voicevox_speaker_id, { allowNegative: true, integer: true }),
+      voicevoxSpeedScale: normalizeNumberForInput(payload.voicevox_speed_scale),
+      voicevoxPitchScale: normalizeNumberForInput(payload.voicevox_pitch_scale, { allowNegative: true }),
+      voicevoxIntonationScale: normalizeNumberForInput(payload.voicevox_intonation_scale),
+      voicevoxVolumeScale: normalizeNumberForInput(payload.voicevox_volume_scale),
+      voicevoxPrePhonemeLength: normalizeNumberForInput(payload.voicevox_pre_phoneme_length),
+      voicevoxPostPhonemeLength: normalizeNumberForInput(payload.voicevox_post_phoneme_length),
+      voicevoxPauseLength: normalizeNumberForInput(payload.voicevox_pause_length),
+      voicevoxPauseLengthScale: normalizeNumberForInput(payload.voicevox_pause_length_scale)
     };
 
     // トーク画面に遷移
@@ -1183,6 +1352,15 @@ function goBack() {
   const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
   const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
   const removeAttachmentInput = document.getElementById('removeAttachment');
+  const voicevoxSpeakerIdInput = document.getElementById('voicevoxSpeakerId');
+  const voicevoxSpeedScaleInput = document.getElementById('voicevoxSpeedScale');
+  const voicevoxPitchScaleInput = document.getElementById('voicevoxPitchScale');
+  const voicevoxIntonationScaleInput = document.getElementById('voicevoxIntonationScale');
+  const voicevoxVolumeScaleInput = document.getElementById('voicevoxVolumeScale');
+  const voicevoxPrePhonemeLengthInput = document.getElementById('voicevoxPrePhonemeLength');
+  const voicevoxPostPhonemeLengthInput = document.getElementById('voicevoxPostPhonemeLength');
+  const voicevoxPauseLengthInput = document.getElementById('voicevoxPauseLength');
+  const voicevoxPauseLengthScaleInput = document.getElementById('voicevoxPauseLengthScale');
 
   // 変更があるかどうかをチェック
   const hasChanges =
@@ -1199,6 +1377,15 @@ function goBack() {
     (dynamicContextUrlInput?.value ?? '') !== originalSettings.dynamicContextUrl ||
     (dynamicContextHistoryTurnsInput?.value ?? '') !== originalSettings.dynamicContextHistoryTurns ||
     (removeAttachmentInput?.checked ?? false) !== originalSettings.removeAttachment ||
+    (voicevoxSpeakerIdInput?.value ?? '') !== originalSettings.voicevoxSpeakerId ||
+    (voicevoxSpeedScaleInput?.value ?? '') !== originalSettings.voicevoxSpeedScale ||
+    (voicevoxPitchScaleInput?.value ?? '') !== originalSettings.voicevoxPitchScale ||
+    (voicevoxIntonationScaleInput?.value ?? '') !== originalSettings.voicevoxIntonationScale ||
+    (voicevoxVolumeScaleInput?.value ?? '') !== originalSettings.voicevoxVolumeScale ||
+    (voicevoxPrePhonemeLengthInput?.value ?? '') !== originalSettings.voicevoxPrePhonemeLength ||
+    (voicevoxPostPhonemeLengthInput?.value ?? '') !== originalSettings.voicevoxPostPhonemeLength ||
+    (voicevoxPauseLengthInput?.value ?? '') !== originalSettings.voicevoxPauseLength ||
+    (voicevoxPauseLengthScaleInput?.value ?? '') !== originalSettings.voicevoxPauseLengthScale ||
     hasUnsavedAssetChanges();
 
   // 変更がある場合は確認ダイアログを表示

@@ -291,6 +291,16 @@ const FIELD_DEFINITIONS = {
     note: '<a href="https://openrouter.ai/models?fmt=cards&output_modalities=image">OpenRouterの場合はこちらからモデルを探せます</a>',
     order: 223
   },
+  VoiceVoxBaseUrl: {
+    label: 'VOICEVOX Base URL',
+    description: 'VOICEVOXエンジンのベースURLです。空欄の場合はVOICEVOX機能が無効化されます。',
+    valueType: 'string',
+    inputType: 'url',
+    allowEmpty: true,
+    placeholder: 'http://localhost:50021',
+    note: 'エンジンごとにポート番号は異なります。',
+    order: 224
+  },
   DebugMode: {
     label: 'デバッグモード',
     description: '追加のログ出力などデバッグ向け機能を有効にします。性能が落ちることがあります。通常はオフのままにしてください。',

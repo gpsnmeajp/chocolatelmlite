@@ -524,3 +524,14 @@
   background-color: var(--success-hover-color);
   border-color: var(--success-hover-color);
 }
+
+.voicevox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.voicevox-grid .form-group {
+  margin-bottom: 0;
+}

@@ -26,6 +26,7 @@ namespace CllDotnet
         ConsoleMonitor consoleMonitor;
 
         Persona persona;
+        VoiceVox voiceVox;
 
         WebApplication? app;
 
@@ -87,10 +88,11 @@ namespace CllDotnet
             return IPAddress.IsLoopback(remoteIp) || remoteIp.Equals(context.Connection.LocalIpAddress);
         }
 
-        public WebServer(ConsoleMonitor _consoleMonitor, Persona _persona)
+        public WebServer(ConsoleMonitor _consoleMonitor, Persona _persona, VoiceVox _voiceVox)
         {
             this.consoleMonitor = _consoleMonitor;
             this.persona = _persona;
+            this.voiceVox = _voiceVox;
         }
 
 
@@ -549,6 +551,12 @@ namespace CllDotnet
                 }
 
                 await context.Response.WriteAsync(DictionaryToJson($"DELETE /api/persona/active/keyword-knowledge/{idInt}", persona.RemoveActivePersonaKeywordKnowledge(idInt)));
+            });
+
+            app.MapGet("/api/voicevox/speakers", async context =>
+            {
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(DictionaryToJson("GET /api/voicevox/speakers", await voiceVox.GetAvailableSpeakersAsync()));
             });
 
             // WebSocket接続のハンドリング
