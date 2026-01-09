@@ -87,12 +87,14 @@ namespace CllDotnet
                 try
                 {
                     cancellationTokenSource.Cancel();
-                }catch (ObjectDisposedException)
+                }
+                catch (ObjectDisposedException)
                 {
                     // すでにDisposeされている場合は無視
                 }
             }
             MyLog.LogWrite("LLM生成のキャンセルを要求しました。");
+            voiceVox.InitializeAsync().Wait();
         }
 
         public bool IsGenerating()

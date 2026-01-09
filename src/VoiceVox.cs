@@ -32,6 +32,7 @@ namespace CllDotnet
         {
             public Guid MessageId = Guid.Empty;
             public string Text = "";
+            public int TailIndex = -1;
             public string VoiceVoxBaseUrl = "";
             public bool EnableKatakanaEnglish = true;
             public bool EnableInterrogativeUpspeak = true;
@@ -88,38 +89,82 @@ namespace CllDotnet
             return "";
         }
 
-        private void EnqueueSpeech(string text)
+        // 音声合成キューに追加(表示同期用にIndexも渡す)
+        private void EnqueueSpeech(string text, int startIndex, string extractMode)
         {
             text = text.Trim().Replace("**", "");
+
+            if (extractMode == "remove_brackets")
+            {
+                // ()内を除去する
+                text = Regex.Replace(text, @"\([^()]*\)", "");
+            }else if (extractMode == "say_tag")
+            {
+                // <say>タグを抽出する
+                var match = Regex.Match(text, @"<say>(.*?)</say>");
+                if (match.Success)
+                {
+                    text = match.Groups[1].Value;
+                }else{
+                    // 見つからなければ空文字にする
+                    text = "";
+                }
+            }else if (extractMode == "quotation_mark")
+            {
+                // 「」を抽出する
+                var match = Regex.Match(text, @"「(.*?)」");
+                if (match.Success)
+                {
+                    text = match.Groups[1].Value;
+                }else{
+                    // 見つからなければ空文字にする
+                    text = "";
+                }
+            }else{
+                // 何もしない
+            }
+            
             if (string.IsNullOrWhiteSpace(text))
             {
                 return;
             }
             var personaSettings = _fileManager.GetActivePersonaSettings();
-            if(personaSettings == null || personaSettings.VoiceVoxSpeakerId == -1)
+            if (personaSettings == null || personaSettings.VoiceVoxSpeakerId == -1)
             {
                 return;
             }
-            MyLog.LogWrite($"音声合成キューに追加: {text} / {currentMessageId} / {GetVoiceVoxBaseUrl()}" +
-            $"(Speaker ID: {personaSettings.VoiceVoxSpeakerId}, Speed: {personaSettings.VoiceVoxSpeedScale}, Pitch: {personaSettings.VoiceVoxPitchScale}" +
-            $", Intonation: {personaSettings.VoiceVoxIntonationScale}, Volume: {personaSettings.VoiceVoxVolumeScale}" +
-            $", PrePhoneme: {personaSettings.VoiceVoxPrePhonemeLength}, PostPhoneme: {personaSettings.VoiceVoxPostPhonemeLength}" +
-            $", PauseLength: {personaSettings.VoiceVoxPauseLength}, PauseLengthScale: {personaSettings.VoiceVoxPauseLengthScale})");
-            queue.Enqueue(new SynthesisRequest
+
+            // 改行や。で分割してキューに追加する。(長すぎると失敗するため)
+            var splitText = text.Split(["。", ". ", "\n"], StringSplitOptions.RemoveEmptyEntries);
+            foreach (var segment in splitText)
             {
-                VoiceVoxBaseUrl = GetVoiceVoxBaseUrl(),
-                Text = text,
-                MessageId = currentMessageId,
-                SpeakerId = personaSettings.VoiceVoxSpeakerId,
-                SpeedScale = personaSettings.VoiceVoxSpeedScale,
-                PitchScale = personaSettings.VoiceVoxPitchScale,
-                IntonationScale = personaSettings.VoiceVoxIntonationScale,
-                VolumeScale = personaSettings.VoiceVoxVolumeScale,
-                PrePhonemeLength = personaSettings.VoiceVoxPrePhonemeLength,
-                PostPhonemeLength = personaSettings.VoiceVoxPostPhonemeLength,
-                PauseLength = personaSettings.VoiceVoxPauseLength,
-                PauseLengthScale = personaSettings.VoiceVoxPauseLengthScale
-            });
+                int tailIndex = startIndex + text.IndexOf(segment) + segment.Length;
+                var trimmedSegment = segment.Trim();
+                if (!string.IsNullOrEmpty(trimmedSegment))
+                {
+                    MyLog.LogWrite($"音声合成キューに追加: {text} / {currentMessageId} / {GetVoiceVoxBaseUrl()}" +
+                    $"(Speaker ID: {personaSettings.VoiceVoxSpeakerId}, Speed: {personaSettings.VoiceVoxSpeedScale}, Pitch: {personaSettings.VoiceVoxPitchScale}" +
+                    $", Intonation: {personaSettings.VoiceVoxIntonationScale}, Volume: {personaSettings.VoiceVoxVolumeScale}" +
+                    $", PrePhoneme: {personaSettings.VoiceVoxPrePhonemeLength}, PostPhoneme: {personaSettings.VoiceVoxPostPhonemeLength}" +
+                    $", PauseLength: {personaSettings.VoiceVoxPauseLength}, PauseLengthScale: {personaSettings.VoiceVoxPauseLengthScale})");
+                    queue.Enqueue(new SynthesisRequest
+                    {
+                        VoiceVoxBaseUrl = GetVoiceVoxBaseUrl(),
+                        Text = trimmedSegment,
+                        MessageId = currentMessageId,
+                        SpeakerId = personaSettings.VoiceVoxSpeakerId,
+                        SpeedScale = personaSettings.VoiceVoxSpeedScale,
+                        PitchScale = personaSettings.VoiceVoxPitchScale,
+                        IntonationScale = personaSettings.VoiceVoxIntonationScale,
+                        VolumeScale = personaSettings.VoiceVoxVolumeScale,
+                        PrePhonemeLength = personaSettings.VoiceVoxPrePhonemeLength,
+                        PostPhonemeLength = personaSettings.VoiceVoxPostPhonemeLength,
+                        PauseLength = personaSettings.VoiceVoxPauseLength,
+                        PauseLengthScale = personaSettings.VoiceVoxPauseLengthScale,
+                        TailIndex = tailIndex,
+                    });
+                }
+            }
         }
 
         private async Task CheckBufferAsync()
@@ -133,7 +178,7 @@ namespace CllDotnet
                     if (audioData.Length > 0)
                     {
                         string data = Convert.ToBase64String(audioData);
-                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "speak", data } });
+                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "speak", data }, { "messageId", request.MessageId.ToString() }, { "tailIndex", request.TailIndex } });
                     }
                     MyLog.LogWrite($"音声合成完了: {request.Text}");
                 }
@@ -286,6 +331,7 @@ namespace CllDotnet
         // 新しいメッセージの開始
         public async Task InitializeAsync()
         {
+            queue.Clear();
             currentMessageBuffer = "";
             currentMessageId = Guid.NewGuid();
             MyLog.LogWrite($"音声合成初期化: {currentMessageId}");
@@ -299,6 +345,8 @@ namespace CllDotnet
                 return;
             }
 
+            var extractMode = _fileManager.GetActivePersonaSettings()?.VoiceVoxExtractMode ?? "none";
+
             // ループ開始
             // カレントバッファと比較し、差分を取得
             // 差分の中に「。」あるいは「. 」あるいは改行があれば、その位置までを音声合成キューに回し、カレントバッファに追加
@@ -309,19 +357,50 @@ namespace CllDotnet
                 int periodIndex = diff.IndexOf('。');
                 int dotIndex = diff.IndexOf(". ");
                 int newlineIndex = diff.IndexOf('\n');
+                int sayCloseIndex = diff.IndexOf("</say>");
+                int quoteCloseIndex = diff.IndexOf("」");
+                int parenCloseIndex = diff.IndexOf(")");
 
                 int splitIndex = -1;
-                if (periodIndex != -1)
+
+                if (extractMode == "say_tag")
                 {
-                    splitIndex = periodIndex + 1;
+                    // saytagモード(</say>を区切り箇所として抽出する)
+                    if (sayCloseIndex >= 0)
+                    {
+                        splitIndex = sayCloseIndex + 6; // "</say>"の長さは6
+                    }
                 }
-                else if (dotIndex != -1)
+                else if (extractMode == "quotation_mark")
                 {
-                    splitIndex = dotIndex + 2;
+                    // 引用符モード(」を区切り箇所として抽出する)
+                    if (quoteCloseIndex >= 0)
+                    {
+                        splitIndex = quoteCloseIndex + 1;
+                    }
                 }
-                else if (newlineIndex != -1)
+                else if (extractMode == "remove_brackets")
                 {
-                    splitIndex = newlineIndex + 1;
+                    // 括弧除去モード())を区切り箇所として抽出する
+                    if (parenCloseIndex >= 0)
+                    {
+                        splitIndex = parenCloseIndex + 1;
+                    }
+                }
+                else{
+                    // 通常モード(文末を区切り箇所として抽出する)
+                    if (periodIndex != -1)
+                    {
+                        splitIndex = periodIndex + 1;
+                    }
+                    else if (dotIndex != -1)
+                    {
+                        splitIndex = dotIndex + 2;
+                    }
+                    else if (newlineIndex != -1)
+                    {
+                        splitIndex = newlineIndex + 1;
+                    }
                 }
 
                 if (splitIndex == -1)
@@ -330,10 +409,13 @@ namespace CllDotnet
                 }
 
                 string segment = diff.Substring(0, splitIndex);
+                int startIndex = currentMessageBuffer.Length;
+
                 // 音声合成キューに回す処理をここに追加                
-                EnqueueSpeech(segment);
+                EnqueueSpeech(segment, startIndex, extractMode);
 
                 currentMessageBuffer += segment;
+                MyLog.LogWrite($"音声合成中間処理: {currentMessageId} / バッファ長: {currentMessageBuffer.Length} / splitIndex: {splitIndex}");
             }
 
         }
@@ -351,7 +433,8 @@ namespace CllDotnet
             string diff = text.Substring(currentMessageBuffer.Length);
             if (!string.IsNullOrEmpty(diff))
             {
-                EnqueueSpeech(diff);
+                var extractMode = _fileManager.GetActivePersonaSettings()?.VoiceVoxExtractMode ?? "none";
+                EnqueueSpeech(diff, currentMessageBuffer.Length, extractMode);
             }
         }
     }

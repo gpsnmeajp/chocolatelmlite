@@ -118,6 +118,7 @@ async function loadSettings() {
     const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
     const removeAttachmentInput = document.getElementById('removeAttachment');
     const voicevoxSpeakerIdInput = document.getElementById('voicevoxSpeakerId');
+    const voicevoxExtractModeInput = document.getElementById('voicevoxExtractMode');
     const voicevoxSpeedScaleInput = document.getElementById('voicevoxSpeedScale');
     const voicevoxPitchScaleInput = document.getElementById('voicevoxPitchScale');
     const voicevoxIntonationScaleInput = document.getElementById('voicevoxIntonationScale');
@@ -189,6 +190,9 @@ async function loadSettings() {
     }
 
     setVoicevoxSpeakerSelection(data?.voicevox_speaker_id);
+    if (voicevoxExtractModeInput) {
+      voicevoxExtractModeInput.value = (data?.voicevox_extract_mode ?? 'none').toString();
+    }
     if (voicevoxSpeedScaleInput) {
       voicevoxSpeedScaleInput.value = normalizeNumberForInput(data?.voicevox_speed_scale);
     }
@@ -236,6 +240,7 @@ async function loadSettings() {
       dynamicContextHistoryTurns: dynamicContextHistoryTurnsInput?.value ?? '',
       removeAttachment: removeAttachmentInput?.checked ?? false,
       voicevoxSpeakerId: voicevoxSpeakerIdInput?.value ?? '',
+      voicevoxExtractMode: voicevoxExtractModeInput?.value ?? 'none',
       voicevoxSpeedScale: voicevoxSpeedScaleInput?.value ?? '',
       voicevoxPitchScale: voicevoxPitchScaleInput?.value ?? '',
       voicevoxIntonationScale: voicevoxIntonationScaleInput?.value ?? '',
@@ -1265,6 +1270,7 @@ async function saveSettings() {
   payload.dynamic_context_history_turns = Number.isFinite(parsedTurns) && parsedTurns >= 0 ? parsedTurns : 8;
   payload.remove_attachment = document.getElementById('removeAttachment')?.checked ?? false;
   payload.voicevox_speaker_id = parseNumberInput(document.getElementById('voicevoxSpeakerId')?.value, { allowNegative: true, integer: true });
+  payload.voicevox_extract_mode = document.getElementById('voicevoxExtractMode')?.value ?? 'none';
   payload.voicevox_speed_scale = parseNumberInput(document.getElementById('voicevoxSpeedScale')?.value);
   payload.voicevox_pitch_scale = parseNumberInput(document.getElementById('voicevoxPitchScale')?.value, { allowNegative: true });
   payload.voicevox_intonation_scale = parseNumberInput(document.getElementById('voicevoxIntonationScale')?.value);
@@ -1309,6 +1315,7 @@ async function saveSettings() {
       dynamicContextHistoryTurns: String(payload.dynamic_context_history_turns),
       removeAttachment: payload.remove_attachment,
       voicevoxSpeakerId: normalizeNumberForInput(payload.voicevox_speaker_id, { allowNegative: true, integer: true }),
+      voicevoxExtractMode: payload.voicevox_extract_mode ?? 'none',
       voicevoxSpeedScale: normalizeNumberForInput(payload.voicevox_speed_scale),
       voicevoxPitchScale: normalizeNumberForInput(payload.voicevox_pitch_scale, { allowNegative: true }),
       voicevoxIntonationScale: normalizeNumberForInput(payload.voicevox_intonation_scale),
@@ -1353,6 +1360,7 @@ function goBack() {
   const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
   const removeAttachmentInput = document.getElementById('removeAttachment');
   const voicevoxSpeakerIdInput = document.getElementById('voicevoxSpeakerId');
+  const voicevoxExtractModeInput = document.getElementById('voicevoxExtractMode');
   const voicevoxSpeedScaleInput = document.getElementById('voicevoxSpeedScale');
   const voicevoxPitchScaleInput = document.getElementById('voicevoxPitchScale');
   const voicevoxIntonationScaleInput = document.getElementById('voicevoxIntonationScale');
@@ -1378,6 +1386,7 @@ function goBack() {
     (dynamicContextHistoryTurnsInput?.value ?? '') !== originalSettings.dynamicContextHistoryTurns ||
     (removeAttachmentInput?.checked ?? false) !== originalSettings.removeAttachment ||
     (voicevoxSpeakerIdInput?.value ?? '') !== originalSettings.voicevoxSpeakerId ||
+    (voicevoxExtractModeInput?.value ?? '') !== originalSettings.voicevoxExtractMode ||
     (voicevoxSpeedScaleInput?.value ?? '') !== originalSettings.voicevoxSpeedScale ||
     (voicevoxPitchScaleInput?.value ?? '') !== originalSettings.voicevoxPitchScale ||
     (voicevoxIntonationScaleInput?.value ?? '') !== originalSettings.voicevoxIntonationScale ||

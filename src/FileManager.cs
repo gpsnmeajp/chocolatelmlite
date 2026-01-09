@@ -36,6 +36,8 @@ namespace CllDotnet
         public double? VoiceVoxPostPhonemeLength = null;
         public double? VoiceVoxPauseLength = null;
         public double? VoiceVoxPauseLengthScale = null;
+        public string VoiceVoxExtractMode = "none"; // none, say_tag, quotation_mark, remove_brackets 発声抽出モード
+        public bool VoiceVoxSyncTextPrinting = false; // テキスト表示と音声合成を同期する
     }
 
     public class YamlKeywordKnowledge

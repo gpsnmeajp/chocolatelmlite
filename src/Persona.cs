@@ -659,6 +659,17 @@ namespace CllDotnet
                 }
             }
 
+            string NormalizeVoiceVoxExtractMode(string? raw)
+            {
+                return (raw ?? "").Trim().ToLowerInvariant() switch
+                {
+                    "say_tag" => "say_tag",
+                    "quotation_mark" => "quotation_mark",
+                    "remove_brackets" => "remove_brackets",
+                    _ => "none"
+                };
+            }
+
             if (content.ContainsKey("name") && content["name"].ValueKind == JsonValueKind.String)
             {
                 personaSettings.Name = content["name"].GetString() ?? "";
@@ -724,6 +735,11 @@ namespace CllDotnet
                 personaSettings.VoiceVoxSpeakerId = ParseIntOrDefault(voiceVoxSpeakerElement, -1);
             }
 
+            if (content.TryGetValue("voicevox_extract_mode", out var voiceVoxExtractModeElement) && voiceVoxExtractModeElement.ValueKind == JsonValueKind.String)
+            {
+                personaSettings.VoiceVoxExtractMode = NormalizeVoiceVoxExtractMode(voiceVoxExtractModeElement.GetString());
+            }
+
             ApplyNullableDouble("voicevox_speed_scale", value => personaSettings.VoiceVoxSpeedScale = value);
             ApplyNullableDouble("voicevox_pitch_scale", value => personaSettings.VoiceVoxPitchScale = value);
             ApplyNullableDouble("voicevox_intonation_scale", value => personaSettings.VoiceVoxIntonationScale = value);
@@ -764,6 +780,7 @@ namespace CllDotnet
                 result["dynamic_context_history_turns"] = settings.DynamicContextHistoryTurns;
                 result["remove_attachment"] = settings.RemoveAttachment;
                 result["voicevox_speaker_id"] = settings.VoiceVoxSpeakerId;
+                result["voicevox_extract_mode"] = settings.VoiceVoxExtractMode;
                 result["voicevox_speed_scale"] = settings.VoiceVoxSpeedScale;
                 result["voicevox_pitch_scale"] = settings.VoiceVoxPitchScale;
                 result["voicevox_intonation_scale"] = settings.VoiceVoxIntonationScale;
