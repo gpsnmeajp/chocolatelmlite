@@ -34,7 +34,8 @@ LLM呼び出しなどのタイムアウトは、設定の`TimeoutSeconds`で指�
 ### リクエスト送信時の注意事項
 
 #### JSONキーの形式
-すべてのJSONキーはPascalCase形式で記述してください（例: `LlmEndpointUrl`, `Uuid`, `AttachmentId`）。
+- 全体設定、メッセージ、添付ファイル関連はPascalCase形式（例: `LlmEndpointUrl`, `Uuid`, `AttachmentId`）
+- ペルソナ設定やキーワードナレッジなど一部のエンドポイントはスネークケース/小文字キー（例: `name`, `model`, `voicevox_speaker_id`, `keyword`）。各エンドポイントのサンプルに従ってください。
 
 #### 不明なキーの扱い
 設定やキーワードナレッジの更新時など、APIが認識できないキーは無視されます。
@@ -78,6 +79,7 @@ curl -X POST http://localhost:8010/api/system/restart
 	"settings": {
 		"LlmEndpointUrl": "https://api.example.com/v1",
 		"LlmApiKey": "************",
+        "GlobalSystemPrompt": "",
 		"DefaultModel": "google/gemini-2.5-flash",
 		"YourName": "あなた",
 		"BreakReminderThreshold": 60,
@@ -108,7 +110,8 @@ curl -X POST http://localhost:8010/api/system/restart
 		"EnableImageGeneration": false,
 		"ImageGenerationEndpointUrl": "",
 		"ImageGenerationApiKey": "************",
-		"ImageGenerationModel": "google/gemini-2.5-flash-image",
+        "ImageGenerationModel": "google/gemini-2.5-flash-image",
+        "VoiceVoxBaseUrl": "",
 		"DebugMode": false
 	}
 }
@@ -128,11 +131,13 @@ curl http://localhost:8010/api/setting
 	"LlmEndpointUrl": "https://api.example.com/v1",
 	"LlmApiKey": "sk-xxxx",
 	"DefaultModel": "my-model-1",
+    "GlobalSystemPrompt": "\u3053\u3053\u3067\u5168\u4f53\u5411\u3051\u30b7\u30b9\u30c6\u30e0\u30d7\u30ed\u30f3\u30d7\u30c8\u3092\u4e00\u62ec\u914d\u4fe1",
 	"Temperature": 0.5,
 	"MaxTokens": 4096,
 	"LocalOnly": true,
 	"EnableWebhook": true,
 	"EnableDynamicContext": true,
+    "VoiceVoxBaseUrl": "http://localhost:50021",
 	"ImageGenerationEndpointUrl": "https://img.example.com/v1",
 	"ImageGenerationApiKey": "img-xxxx"
 }
@@ -142,6 +147,10 @@ curl http://localhost:8010/api/setting
 ```json
 { "success": "done" }
 ```
+
+**主なフィールド補足**
+- `GlobalSystemPrompt`: 全ペルソナ共通で先頭に付与されるシステムプロンプト
+- `VoiceVoxBaseUrl`: VoiceVoxエンジンのベースURL（例: `http://localhost:50021`）。未設定なら音声合成機能と`/api/voicevox/speakers`は無効
 
 **curlコマンド例**
 ```bash
@@ -459,8 +468,19 @@ curl -X POST http://localhost:8010/api/persona/active/cancel
 	"enable_dynamic_context": false,
 	"dynamic_context_url": "",
 	"dynamic_context_history_turns": 8,
-	"remove_attachment": false,
-	"system_prompt": "あなたは親切なアシスタントです"
+    "remove_attachment": false,
+    "voicevox_speaker_id": -1,
+    "voicevox_extract_mode": "none",
+    "voicevox_speed_scale": null,
+    "voicevox_pitch_scale": null,
+    "voicevox_intonation_scale": null,
+    "voicevox_volume_scale": null,
+    "voicevox_pre_phoneme_length": null,
+    "voicevox_post_phoneme_length": null,
+    "voicevox_pause_length": null,
+    "voicevox_pause_length_scale": null,
+    "voicevox_sync_text_printing": false,
+    "system_prompt": "あなたは親切なアシスタントです"
 }
 ```
 
@@ -474,6 +494,13 @@ curl http://localhost:8010/api/persona/active/setting
 
 `post_process_script` には JavaScript を渡します。`postProcess(message)` 関数を定義すると、クライアントへ返す直前にメッセージ本文へ変換処理を適用できます。サンドボックス内で実行され、エラー時は未加工の本文が使用されます。
 
+音声合成（VoiceVox）関連のパラメータ:
+- `voicevox_speaker_id` (int): VoiceVoxのスタイルID。`-1`で無効
+- `voicevox_extract_mode` (string): `none` / `say_tag` / `quotation_mark` / `remove_brackets`
+- `voicevox_*` スケール類 (number|null): 速度・ピッチ・イントネーション・音量・音素長などの調整値
+- `voicevox_sync_text_printing` (bool): テキスト表示と音声合成を同期させるか
+VoiceVoxを使うには、全体設定で`VoiceVoxBaseUrl`を設定し、ペルソナ側で`voicevox_speaker_id`を指定してください。
+
 **リクエスト例**
 ```json
 {
@@ -484,6 +511,11 @@ curl http://localhost:8010/api/persona/active/setting
 	"dynamic_context_history_turns": 6,
 	"webhook_url": "https://hook.example.com/notify",
 	"webhook_body": "{\"content\":\"%name%: %text%\"}",
+    "remove_attachment": false,
+    "voicevox_speaker_id": 3,
+    "voicevox_extract_mode": "say_tag",
+    "voicevox_speed_scale": 1.0,
+    "voicevox_pitch_scale": 0.0,
 	"system_prompt": "You are a PM assistant."
 }
 ```
@@ -583,6 +615,25 @@ curl -X POST http://localhost:8010/api/persona/active/keyword-knowledge \
 curl -X DELETE http://localhost:8010/api/persona/active/keyword-knowledge/2
 ```
 
+### 音声合成 (VoiceVox)
+
+#### GET /api/voicevox/speakers
+全体設定の`VoiceVoxBaseUrl`で指定したVoiceVoxサーバーから、利用可能な話者スタイル一覧を取得します。サーバー未設定または到達不可の場合は空オブジェクトが返ります。
+
+**レスポンス例**
+```json
+{
+    "音声モデルA - ノーマル": 2,
+    "音声モデルA - 楽しい": 0,
+    "音声モデルB - ノーマル": 3
+}
+```
+
+**curlコマンド例**
+```bash
+curl http://localhost:8010/api/voicevox/speakers
+```
+
 ---
 
 ## WebSocket API
@@ -602,6 +653,7 @@ WebSocketを使用して、リアルタイムで生成処理の進捗を受け�
 - `{ "status": "canceled" }` - 生成処理がキャンセルまたはタイムアウトしました
 - `{ "status": "completed", "response": "応答", "error": "エラー" }` - 生成処理が完了しました（`error`は成功時は空文字、エラー時はメッセージが入ります）
 - `{ "status": "tool_update", "state": "call|result|error", "name": "toolName", ... }` - ツール実行により履歴が更新されました。`state`が`call`のとき`arguments`、`result`のとき`result`、`error`のとき`error`が添付されます
+- `{ "speak": "<base64>", "messageId": "<guid>", "tailIndex": 123, "finished": true|false }` - VoiceVoxで生成された音声データ(WAV)がBase64エンコードで送信されます。`tailIndex`はテキスト位置、`finished`はメッセージ末尾かどうかを示します（`VoiceVoxBaseUrl`と`voicevox_speaker_id`設定時のみ送信されます）
 
 ### 接続確認例
 WebSocketクライアント（`wscat`）を使用した接続例：
