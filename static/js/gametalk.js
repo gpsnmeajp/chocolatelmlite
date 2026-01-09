@@ -49,6 +49,13 @@ const state = {
   currentSpeechAudio: null,        // 再生中のAudio要素
   currentSpeechUrl: null,          // 再生中オブジェクトURL
   showUserMessages: false,         // ユーザーメッセージ表示フラグ（トグル式）
+  voicevoxSync: {                  // VoiceVox同期表示用の状態
+    enabled: false,                // 同期表示を有効にするか
+    messageId: null,               // 同期対象のメッセージID
+    visibleTail: 0,                // 現在表示済みの末尾インデックス
+    finished: false               // 最終チャンクを受信済みか
+  },
+  pendingCompletionReload: false   // 音声再生完了待ちの再読込フラグ
 };
 
 // 自動スクロールを継続するための閾値（px）
@@ -317,6 +324,7 @@ async function init() {
     return;
   }
   await loadPersonaSummary();
+  await loadVoicevoxSyncSetting();
   await loadPersonaMedia();
   await reloadMessages({ forceScroll: true });
   startRealtime();
@@ -371,6 +379,20 @@ async function loadPersonaSummary() {
     }
   } catch (error) {
     console.error('Failed to load persona summary:', error);
+  }
+}
+
+/**
+ * VoiceVoxの同期表示設定を取得
+ * 音声とテキストを同期させる場合にフロント側で制御する。
+ */
+async function loadVoicevoxSyncSetting() {
+  try {
+    const data = await fetchJson('/api/persona/active/setting');
+    state.voicevoxSync.enabled = Boolean(data?.voicevox_sync_text_printing);
+  } catch (error) {
+    console.warn('Failed to load VoiceVox sync flag:', error);
+    state.voicevoxSync.enabled = false;
   }
 }
 
@@ -855,6 +877,7 @@ async function performMessageSend({ text, editingUuid = null }) {
 
   state.isSending = true;
   refreshSendButton();
+  resetVoicevoxSyncState();
 
   try {
     const attachmentIds = existingAttachmentIds;
@@ -954,6 +977,8 @@ async function cancelGeneration() {
   }
 
   state.isCanceling = true;
+  stopSpeechPlayback();
+  resetVoicevoxSyncState();
   refreshSendButton();
 
   try {
@@ -1811,11 +1836,12 @@ function renderLiveGenerationMessage() {
 
   const statusKey = (state.liveGeneration.status || '').toLowerCase();
   const needsPlaceholder = state.liveGeneration.status === 'generating' || state.liveGeneration.status === 'started';
-  const displayText = state.liveGeneration.text && state.liveGeneration.text.length > 0
+  const rawDisplayText = state.liveGeneration.text && state.liveGeneration.text.length > 0
     ? state.liveGeneration.text
     : needsPlaceholder
       ? '...'
       : '';
+  const displayText = getVoicevoxSyncedText(rawDisplayText);
 
   if (existing) {
     existing.classList.add('live-generation');
@@ -2971,7 +2997,12 @@ function handleWebSocketMessage(event) {
 
   // 音声データを受信した場合はキューに追加
   if (typeof payload.speak === 'string') {
-    enqueueSpeechAudio(payload.speak);
+    enqueueSpeechAudio({
+      audio: payload.speak,
+      tailIndex: Number.isFinite(payload.tailIndex) ? Number(payload.tailIndex) : null,
+      messageId: typeof payload.messageId === 'string' ? payload.messageId : null,
+      finished: Boolean(payload.finished)
+    });
   }
 
   // ステータスブロードキャスト（AI応答生成の進行状況）
@@ -2981,17 +3012,26 @@ function handleWebSocketMessage(event) {
 }
 
 // 受信した音声データを順番に再生する
-function enqueueSpeechAudio(base64Audio) {
+function enqueueSpeechAudio(payload) {
+  const base64Audio = typeof payload === 'string' ? payload : payload?.audio;
   if (typeof base64Audio !== 'string') {
     return;
   }
 
+  // data URI 形式で届く可能性も考慮してヘッダーを除去
   const sanitized = base64Audio.replace(/^data:[^;]+;base64,/, '').trim();
   if (!sanitized) {
     return;
   }
 
-  state.speechQueue.push(sanitized);
+  const entry = {
+    audio: sanitized,
+    tailIndex: Number.isFinite(payload?.tailIndex) ? Number(payload.tailIndex) : null,
+    messageId: typeof payload?.messageId === 'string' ? payload.messageId : null,
+    finished: Boolean(payload?.finished)
+  };
+
+  state.speechQueue.push(entry);
   if (!state.isSpeechPlaying) {
     playNextSpeechAudio();
   }
@@ -3004,19 +3044,25 @@ function playNextSpeechAudio() {
   }
 
   const next = state.speechQueue.shift();
-  if (!next) {
+  const audioBase64 = typeof next === 'string' ? next : next?.audio;
+  if (!audioBase64) {
+    handleSpeechQueueDrained();
     return;
   }
 
   state.isSpeechPlaying = true;
 
-  const audioBytes = decodeBase64ToUint8(next);
+  const audioBytes = decodeBase64ToUint8(audioBase64);
   const blob = new Blob([audioBytes], { type: 'audio/wav' });
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
 
   state.currentSpeechAudio = audio;
   state.currentSpeechUrl = url;
+
+  const applySyncProgress = () => {
+    handleVoicevoxSyncProgress(next);
+  };
 
   const cleanup = () => {
     if (state.currentSpeechAudio) {
@@ -3035,6 +3081,8 @@ function playNextSpeechAudio() {
     playNextSpeechAudio();
   };
 
+  audio.addEventListener('play', applySyncProgress, { once: true });
+  audio.addEventListener('playing', applySyncProgress, { once: true });
   audio.addEventListener('ended', handleCompletion, { once: true });
   audio.addEventListener('error', () => {
     console.warn('Audio playback failed. Skipping to next.');
@@ -3058,6 +3106,93 @@ function decodeBase64ToUint8(base64) {
   return bytes;
 }
 
+// VoiceVox同期表示用の状態をリセット
+function resetVoicevoxSyncState() {
+  state.voicevoxSync.messageId = null;
+  state.voicevoxSync.visibleTail = 0;
+  state.voicevoxSync.finished = false;
+}
+
+// 音声再生の進行に合わせて表示許可範囲を進める
+function handleVoicevoxSyncProgress(payload) {
+  if (!state.voicevoxSync.enabled || !payload) {
+    return;
+  }
+
+  const messageId = typeof payload.messageId === 'string' ? payload.messageId : null;
+  if (messageId) {
+    if (state.voicevoxSync.messageId && state.voicevoxSync.messageId !== messageId) {
+      return;
+    }
+    state.voicevoxSync.messageId = messageId;
+  }
+
+  if (payload.finished) {
+    state.voicevoxSync.finished = true;
+    state.voicevoxSync.visibleTail = Number.POSITIVE_INFINITY;
+  }
+
+  const tailIndex = Number.isFinite(payload.tailIndex) ? Number(payload.tailIndex) : null;
+  if (tailIndex !== null) {
+    const currentTail = Number.isFinite(state.voicevoxSync.visibleTail) ? state.voicevoxSync.visibleTail : 0;
+    if (tailIndex > currentTail) {
+      state.voicevoxSync.visibleTail = tailIndex;
+    }
+  }
+
+  renderLiveGenerationMessage();
+  handleSpeechQueueDrained();
+}
+
+// 音声キューが空になった際の処理（同期表示時に完了を遅延させるため）
+function handleSpeechQueueDrained() {
+  if (!state.pendingCompletionReload) {
+    return;
+  }
+
+  if (state.isSpeechPlaying || state.speechQueue.length > 0) {
+    return;
+  }
+
+  performCompletionFinalize();
+}
+
+function performCompletionFinalize() {
+  state.pendingCompletionReload = false;
+  renderLiveGenerationMessage();
+  reloadMessages({ forceScroll: true })
+    .catch(error => console.error('Failed to refresh messages after completion:', error))
+    .finally(() => {
+      if (state.liveGeneration && state.liveGeneration.status === 'completed') {
+        state.liveGeneration = null;
+        renderLiveGenerationMessage();
+        refreshSendButton();
+      }
+    });
+}
+
+// VoiceVox同期表示用のテキスト変換
+function getVoicevoxSyncedText(rawText) {
+  if (!state.voicevoxSync.enabled) {
+    return rawText;
+  }
+
+  if (state.voicevoxSync.finished) {
+    return rawText;
+  }
+
+  const tail = state.voicevoxSync.visibleTail;
+  if (!Number.isFinite(tail) || tail <= 0) {
+    return '...';
+  }
+
+  if (typeof rawText !== 'string') {
+    return '';
+  }
+
+  return rawText.slice(0, Math.min(rawText.length, tail));
+}
+
 // 再生中の音声を停止し、キューをクリア
 function stopSpeechPlayback() {
   state.speechQueue.length = 0;
@@ -3074,6 +3209,7 @@ function stopSpeechPlayback() {
   state.currentSpeechAudio = null;
   state.currentSpeechUrl = null;
   state.isSpeechPlaying = false;
+  handleSpeechQueueDrained();
 }
 
 /**
@@ -3117,8 +3253,9 @@ function handleStatusBroadcast(payload) {
   switch (status) {
     case 'started':
       // 生成開始時は空のメッセージを表示（プレースホルダー）
-      state.liveGeneration.text = '';
+      state.liveGeneration.text = '...';
       renderLiveGenerationMessage();
+      resetVoicevoxSyncState();
       scrollToBottom({ deferOnly: true });
       break;
 
@@ -3129,18 +3266,14 @@ function handleStatusBroadcast(payload) {
       break;
 
     case 'completed':
-      // 生成完了時は最終的な表示をしてから、サーバーから確定したメッセージを再取得
+      // 音声同期中は再生完了まで確定表示を遅延する
+      if (state.voicevoxSync.enabled && (state.isSpeechPlaying || state.speechQueue.length > 0)) {
+        state.pendingCompletionReload = true;
+        state.liveGeneration.status = 'completed';
       renderLiveGenerationMessage();
-      reloadMessages({ forceScroll: true })
-        .catch(error => console.error('Failed to refresh messages after completion:', error))
-        .finally(() => {
-          // メッセージ再読み込み後、ライブ生成状態をクリア
-          if (state.liveGeneration && state.liveGeneration.status === 'completed') {
-            state.liveGeneration = null;
-            renderLiveGenerationMessage();
-            refreshSendButton();
+      } else {
+        performCompletionFinalize();
           }
-        });
       break;
 
     case 'canceled':
