@@ -94,7 +94,7 @@ namespace CllDotnet
                 }
             }
             MyLog.LogWrite("LLM生成のキャンセルを要求しました。");
-            voiceVox.InitializeAsync().Wait();
+            voiceVox.CancelAsync().Wait();
         }
 
         public bool IsGenerating()

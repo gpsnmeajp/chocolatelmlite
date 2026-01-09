@@ -93,7 +93,7 @@ namespace CllDotnet
         // 音声合成キューに追加(表示同期用にIndexも渡す)
         private void EnqueueSpeech(string text, int startIndex, string extractMode, bool finished = false)
         {
-            text = text.Trim().Replace("**", "");
+            string originalText = text;
 
             if (extractMode == "remove_brackets")
             {
@@ -140,8 +140,8 @@ namespace CllDotnet
             var splitText = text.Split(new[] { "。", ". ", "\n" }, StringSplitOptions.RemoveEmptyEntries);
             for(int i = 0; i < splitText.Length; i++)
             {
-                int tailIndex = startIndex + text.IndexOf(splitText[i]) + splitText[i].Length;
-                var trimmedSegment = splitText[i].Trim();
+                int tailIndex = startIndex + originalText.IndexOf(splitText[i]) + splitText[i].Length + 1;
+                var trimmedSegment = splitText[i].Trim().Replace("**", "");
                 bool lastFinished = finished && (i == splitText.Length -1);
 
                 if (!string.IsNullOrEmpty(trimmedSegment))
@@ -336,11 +336,19 @@ namespace CllDotnet
         // 新しいメッセージの開始
         public async Task InitializeAsync()
         {
-            queue.Clear();
             currentMessageBuffer = "";
             currentMessageId = Guid.NewGuid();
             MyLog.LogWrite($"音声合成初期化: {currentMessageId}");
         }
+
+        // 強制中止
+        public async Task CancelAsync()
+        {
+            // キューはクリアする。バッファはクリアしない。(後続の生成完了処理で無視するため)
+            queue.Clear();
+            MyLog.LogWrite($"音声合成キャンセル: {currentMessageId}");
+        }
+
         // 中間メッセージ
         public async Task ProgressAsync(string text)
         {
@@ -397,7 +405,8 @@ namespace CllDotnet
                         splitIndex = paren2CloseIndex + 1;
                     }
                 }
-                else{
+                else
+                {
                     // 通常モード(文末を区切り箇所として抽出する)
                     if (periodIndex != -1)
                     {
