@@ -53,7 +53,8 @@ const state = {
     messageId: null,               // 同期対象のメッセージID
     visibleTail: 0,                // 現在表示済みの末尾インデックス
     finished: false               // 最終チャンクを受信済みか
-  }
+  },
+  pendingCompletionReload: false   // 音声再生完了待ちの再読込フラグ
 };
 
 // 自動スクロールを継続するための閾値（px）
@@ -2997,6 +2998,7 @@ function playNextSpeechAudio() {
   const next = state.speechQueue.shift();
   const audioBase64 = typeof next === 'string' ? next : next?.audio;
   if (!audioBase64) {
+    handleSpeechQueueDrained();
     return;
   }
 
@@ -3091,6 +3093,34 @@ function handleVoicevoxSyncProgress(payload) {
   }
 
   renderLiveGenerationMessage();
+  handleSpeechQueueDrained();
+}
+
+// 音声キューが空になった際の処理（同期表示時に完了を遅延させるため）
+function handleSpeechQueueDrained() {
+  if (!state.pendingCompletionReload) {
+    return;
+  }
+
+  if (state.isSpeechPlaying || state.speechQueue.length > 0) {
+    return;
+  }
+
+  performCompletionFinalize();
+}
+
+function performCompletionFinalize() {
+  state.pendingCompletionReload = false;
+  renderLiveGenerationMessage();
+  reloadMessages({ forceScroll: true })
+    .catch(error => console.error('Failed to refresh messages after completion:', error))
+    .finally(() => {
+      if (state.liveGeneration && state.liveGeneration.status === 'completed') {
+        state.liveGeneration = null;
+        renderLiveGenerationMessage();
+        refreshSendButton();
+      }
+    });
 }
 
 // VoiceVox同期表示用のテキスト変換
@@ -3105,7 +3135,7 @@ function getVoicevoxSyncedText(rawText) {
 
   const tail = state.voicevoxSync.visibleTail;
   if (!Number.isFinite(tail) || tail <= 0) {
-    return rawText === '...' ? rawText : '';
+    return '...';
   }
 
   if (typeof rawText !== 'string') {
@@ -3131,6 +3161,7 @@ function stopSpeechPlayback() {
   state.currentSpeechAudio = null;
   state.currentSpeechUrl = null;
   state.isSpeechPlaying = false;
+  handleSpeechQueueDrained();
 }
 
 /**
@@ -3186,18 +3217,14 @@ function handleStatusBroadcast(payload) {
       break;
 
     case 'completed':
-      // 生成完了時は最終的な表示をしてから、サーバーから確定したメッセージを再取得
-      renderLiveGenerationMessage();
-      reloadMessages({ forceScroll: true })
-        .catch(error => console.error('Failed to refresh messages after completion:', error))
-        .finally(() => {
-          // メッセージ再読み込み後、ライブ生成状態をクリア
-          if (state.liveGeneration && state.liveGeneration.status === 'completed') {
-            state.liveGeneration = null;
-            renderLiveGenerationMessage();
-            refreshSendButton();
-          }
-        });
+      // 音声同期中は再生完了まで確定表示を遅延する
+      if (state.voicevoxSync.enabled && (state.isSpeechPlaying || state.speechQueue.length > 0)) {
+        state.pendingCompletionReload = true;
+        state.liveGeneration.status = 'completed';
+        renderLiveGenerationMessage();
+      } else {
+        performCompletionFinalize();
+      }
       break;
 
     case 'canceled':
