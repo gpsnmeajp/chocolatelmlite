@@ -45,6 +45,7 @@ namespace CllDotnet
             public double? PostPhonemeLength = null;
             public double? PauseLength = null;
             public double? PauseLengthScale = null;
+            public bool Finished = false;
         }
 
         public VoiceVox(FileManager fileManager, ConsoleMonitor consoleMonitor, CancellationToken cts)
@@ -90,7 +91,7 @@ namespace CllDotnet
         }
 
         // 音声合成キューに追加(表示同期用にIndexも渡す)
-        private void EnqueueSpeech(string text, int startIndex, string extractMode)
+        private void EnqueueSpeech(string text, int startIndex, string extractMode, bool finished = false)
         {
             text = text.Trim().Replace("**", "");
 
@@ -135,11 +136,13 @@ namespace CllDotnet
             }
 
             // 改行や。で分割してキューに追加する。(長すぎると失敗するため)
-            var splitText = text.Split(["。", ". ", "\n"], StringSplitOptions.RemoveEmptyEntries);
-            foreach (var segment in splitText)
+            var splitText = text.Split(new[] { "。", ". ", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            for(int i = 0; i < splitText.Length; i++)
             {
-                int tailIndex = startIndex + text.IndexOf(segment) + segment.Length;
-                var trimmedSegment = segment.Trim();
+                int tailIndex = startIndex + text.IndexOf(splitText[i]) + splitText[i].Length;
+                var trimmedSegment = splitText[i].Trim();
+                bool lastFinished = finished && (i == splitText.Length -1);
+
                 if (!string.IsNullOrEmpty(trimmedSegment))
                 {
                     MyLog.LogWrite($"音声合成キューに追加: {text} / {currentMessageId} / {GetVoiceVoxBaseUrl()}" +
@@ -162,6 +165,7 @@ namespace CllDotnet
                         PauseLength = personaSettings.VoiceVoxPauseLength,
                         PauseLengthScale = personaSettings.VoiceVoxPauseLengthScale,
                         TailIndex = tailIndex,
+                        Finished = lastFinished,
                     });
                 }
             }
@@ -178,7 +182,7 @@ namespace CllDotnet
                     if (audioData.Length > 0)
                     {
                         string data = Convert.ToBase64String(audioData);
-                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "speak", data }, { "messageId", request.MessageId.ToString() }, { "tailIndex", request.TailIndex } });
+                        await Broadcaster.Broadcast(new Dictionary<string, object> { { "speak", data }, { "messageId", request.MessageId.ToString() }, { "tailIndex", request.TailIndex }, { "finished", request.Finished } });
                     }
                     MyLog.LogWrite($"音声合成完了: {request.Text}");
                 }
