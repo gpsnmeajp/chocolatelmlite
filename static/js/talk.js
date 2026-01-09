@@ -874,6 +874,7 @@ async function performMessageSend({ text, editingUuid = null }) {
 
   state.isSending = true;
   refreshSendButton();
+  resetVoicevoxSyncState();
 
   try {
     const attachmentIds = existingAttachmentIds;
@@ -3205,8 +3206,9 @@ function handleStatusBroadcast(payload) {
   switch (status) {
     case 'started':
       // 生成開始時は空のメッセージを表示（プレースホルダー）
-      state.liveGeneration.text = '';
+      state.liveGeneration.text = '...';
       renderLiveGenerationMessage();
+      resetVoicevoxSyncState();
       scrollToBottom({ deferOnly: true });
       break;
 
