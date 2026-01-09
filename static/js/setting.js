@@ -127,6 +127,7 @@ async function loadSettings() {
     const voicevoxPostPhonemeLengthInput = document.getElementById('voicevoxPostPhonemeLength');
     const voicevoxPauseLengthInput = document.getElementById('voicevoxPauseLength');
     const voicevoxPauseLengthScaleInput = document.getElementById('voicevoxPauseLengthScale');
+    const voicevoxSyncTextPrintingInput = document.getElementById('voicevoxSyncTextPrinting');
 
     // 各フィールドに値を設定
     if (displayInput) {
@@ -217,6 +218,9 @@ async function loadSettings() {
     if (voicevoxPauseLengthScaleInput) {
       voicevoxPauseLengthScaleInput.value = normalizeNumberForInput(data?.voicevox_pause_length_scale);
     }
+    if (voicevoxSyncTextPrintingInput) {
+      voicevoxSyncTextPrintingInput.checked = Boolean(data?.voicevox_sync_text_printing);
+    }
 
     updatePostPromptState();
     // DynamicContext機能のUIの状態を更新（有効/無効に応じてURL入力欄の活性/非活性を切り替え）
@@ -248,7 +252,8 @@ async function loadSettings() {
       voicevoxPrePhonemeLength: voicevoxPrePhonemeLengthInput?.value ?? '',
       voicevoxPostPhonemeLength: voicevoxPostPhonemeLengthInput?.value ?? '',
       voicevoxPauseLength: voicevoxPauseLengthInput?.value ?? '',
-      voicevoxPauseLengthScale: voicevoxPauseLengthScaleInput?.value ?? ''
+      voicevoxPauseLengthScale: voicevoxPauseLengthScaleInput?.value ?? '',
+      voicevoxSyncTextPrinting: voicevoxSyncTextPrintingInput?.checked ?? false
     };
   } catch (error) {
     console.error('Failed to load settings:', error);
@@ -1279,6 +1284,7 @@ async function saveSettings() {
   payload.voicevox_post_phoneme_length = parseNumberInput(document.getElementById('voicevoxPostPhonemeLength')?.value);
   payload.voicevox_pause_length = parseNumberInput(document.getElementById('voicevoxPauseLength')?.value);
   payload.voicevox_pause_length_scale = parseNumberInput(document.getElementById('voicevoxPauseLengthScale')?.value);
+  payload.voicevox_sync_text_printing = document.getElementById('voicevoxSyncTextPrinting')?.checked ?? false;
 
   try {
     // 二重送信を防ぐため、ボタンを無効化
@@ -1323,7 +1329,8 @@ async function saveSettings() {
       voicevoxPrePhonemeLength: normalizeNumberForInput(payload.voicevox_pre_phoneme_length),
       voicevoxPostPhonemeLength: normalizeNumberForInput(payload.voicevox_post_phoneme_length),
       voicevoxPauseLength: normalizeNumberForInput(payload.voicevox_pause_length),
-      voicevoxPauseLengthScale: normalizeNumberForInput(payload.voicevox_pause_length_scale)
+      voicevoxPauseLengthScale: normalizeNumberForInput(payload.voicevox_pause_length_scale),
+      voicevoxSyncTextPrinting: payload.voicevox_sync_text_printing
     };
 
     // トーク画面に遷移
@@ -1369,6 +1376,7 @@ function goBack() {
   const voicevoxPostPhonemeLengthInput = document.getElementById('voicevoxPostPhonemeLength');
   const voicevoxPauseLengthInput = document.getElementById('voicevoxPauseLength');
   const voicevoxPauseLengthScaleInput = document.getElementById('voicevoxPauseLengthScale');
+  const voicevoxSyncTextPrintingInput = document.getElementById('voicevoxSyncTextPrinting');
 
   // 変更があるかどうかをチェック
   const hasChanges =
@@ -1395,6 +1403,7 @@ function goBack() {
     (voicevoxPostPhonemeLengthInput?.value ?? '') !== originalSettings.voicevoxPostPhonemeLength ||
     (voicevoxPauseLengthInput?.value ?? '') !== originalSettings.voicevoxPauseLength ||
     (voicevoxPauseLengthScaleInput?.value ?? '') !== originalSettings.voicevoxPauseLengthScale ||
+    (voicevoxSyncTextPrintingInput?.checked ?? false) !== originalSettings.voicevoxSyncTextPrinting ||
     hasUnsavedAssetChanges();
 
   // 変更がある場合は確認ダイアログを表示

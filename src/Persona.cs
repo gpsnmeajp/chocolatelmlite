@@ -740,6 +740,12 @@ namespace CllDotnet
                 personaSettings.VoiceVoxExtractMode = NormalizeVoiceVoxExtractMode(voiceVoxExtractModeElement.GetString());
             }
 
+            if (content.TryGetValue("voicevox_sync_text_printing", out var voiceVoxSyncElement) &&
+                (voiceVoxSyncElement.ValueKind == JsonValueKind.True || voiceVoxSyncElement.ValueKind == JsonValueKind.False))
+            {
+                personaSettings.VoiceVoxSyncTextPrinting = voiceVoxSyncElement.GetBoolean();
+            }
+
             ApplyNullableDouble("voicevox_speed_scale", value => personaSettings.VoiceVoxSpeedScale = value);
             ApplyNullableDouble("voicevox_pitch_scale", value => personaSettings.VoiceVoxPitchScale = value);
             ApplyNullableDouble("voicevox_intonation_scale", value => personaSettings.VoiceVoxIntonationScale = value);
@@ -789,6 +795,7 @@ namespace CllDotnet
                 result["voicevox_post_phoneme_length"] = settings.VoiceVoxPostPhonemeLength;
                 result["voicevox_pause_length"] = settings.VoiceVoxPauseLength;
                 result["voicevox_pause_length_scale"] = settings.VoiceVoxPauseLengthScale;
+                result["voicevox_sync_text_printing"] = settings.VoiceVoxSyncTextPrinting;
                 result["system_prompt"] = system_prompt ?? "";
                 result["post_process_script"] = post_process_script;
             }

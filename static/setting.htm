@@ -254,7 +254,7 @@
             🔊 <strong>VoiceVox 読み上げ:</strong><br>
             ペルソナごとの読み上げパラメータを指定します。空欄の項目は既定値を使用します。
           </div>
-          
+
           <div class="voicevox-grid">
             <div class="form-group">
               <label>話者ID</label>
@@ -305,6 +305,13 @@
               <option value="remove_brackets">()内を除去して発声</option>
             </select>
             <p class="form-hint">閉じ要素ごとに区切って発声します。say_tag/quotation_markは囲み内のみ、remove_bracketsは()内を除去します。</p>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="voicevoxSyncTextPrinting"> 音声再生に合わせてテキスト表示を同期する
+            </label>
+            <p class="form-hint">VoiceVoxで再生済みの位置まで画面上の応答テキストを段階的に表示します。音声が生成されない場合は通常通り即時表示されます。</p>
           </div>
 
           <p class="asset-note">保存ボタンは右上にあります。</p>

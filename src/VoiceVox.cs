@@ -99,6 +99,7 @@ namespace CllDotnet
             {
                 // ()内を除去する
                 text = Regex.Replace(text, @"\([^()]*\)", "");
+                text = Regex.Replace(text, @"\（[^（）]*\）", "");
             }else if (extractMode == "say_tag")
             {
                 // <say>タグを抽出する
@@ -364,6 +365,7 @@ namespace CllDotnet
                 int sayCloseIndex = diff.IndexOf("</say>");
                 int quoteCloseIndex = diff.IndexOf("」");
                 int parenCloseIndex = diff.IndexOf(")");
+                int paren2CloseIndex = diff.IndexOf('）');
 
                 int splitIndex = -1;
 
@@ -389,6 +391,10 @@ namespace CllDotnet
                     if (parenCloseIndex >= 0)
                     {
                         splitIndex = parenCloseIndex + 1;
+                    }
+                    if (paren2CloseIndex >= 0)
+                    {
+                        splitIndex = paren2CloseIndex + 1;
                     }
                 }
                 else{
@@ -438,7 +444,7 @@ namespace CllDotnet
             if (!string.IsNullOrEmpty(diff))
             {
                 var extractMode = _fileManager.GetActivePersonaSettings()?.VoiceVoxExtractMode ?? "none";
-                EnqueueSpeech(diff, currentMessageBuffer.Length, extractMode);
+                EnqueueSpeech(diff, currentMessageBuffer.Length, extractMode, finished: true);
             }
         }
     }
