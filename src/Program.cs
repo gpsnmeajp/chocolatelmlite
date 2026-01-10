@@ -217,14 +217,20 @@ namespace CllDotnet
                     {
                         MyLog.LogWrite("サーバーを停止しています...");
                         exit = true;
-                        if (cts != null && !cts.IsCancellationRequested)
+                        try
                         {
-                            cts.Cancel();
+                            if (cts != null && !cts.IsCancellationRequested)
+                            {
+                                cts.Cancel();
+                            }
+                            if (server != null)
+                            {
+                                server.Stop();
+                            }
+                        }catch(ObjectDisposedException)
+                        {
+                            // 無視
                         }
-                        if(server != null)
-                        {
-                            server.Stop();
-                        } 
                     };
 
                     MyLog.LogWrite($"開始: port {fileManager.generalSettings.HttpPort}");
