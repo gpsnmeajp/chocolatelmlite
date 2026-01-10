@@ -20,6 +20,7 @@ namespace CllDotnet
         private readonly ConsoleMonitor _consoleMonitor;
         private List<McpClient> _mcpClients = new List<McpClient>();
         private ImageGenerater _imageGenerater;
+        private SearchLlm _searchLlm;
         public int? lastAttachmentId = null;
         public bool isImageGenerated = false; // 連続作成制限
         List<AITool> _mcpTools = new List<AITool>();
@@ -32,11 +33,12 @@ namespace CllDotnet
             }
         }
 
-        public Tools(ImageGenerater imageGenerater, FileManager fileManager, ConsoleMonitor consoleMonitor)
+        public Tools(ImageGenerater imageGenerater, SearchLlm searchLlm, FileManager fileManager, ConsoleMonitor consoleMonitor)
         {
             _fileManager = fileManager;
             _consoleMonitor = consoleMonitor;
             _imageGenerater = imageGenerater;
+            _searchLlm = searchLlm;
         }
 
         public async Task InitToolsAsync()
@@ -102,6 +104,11 @@ namespace CllDotnet
             if (generalSettings.EnableImageGeneration)
             {
                 tools.Add(AIFunctionFactory.Create(GenerateImage));
+            }
+
+            if (generalSettings.EnableSearchLlm)
+            {
+                tools.Add(AIFunctionFactory.Create(Search));
             }
 
             if (generalSettings.EnableMcpTools)
@@ -293,6 +300,15 @@ namespace CllDotnet
             }
 
             return textResponse;
+        }
+
+        [Description("検索LLMでWeb検索を実行します")]
+        async Task<string> Search(
+            [Description("検索する内容")] string prompt
+        )
+        {
+            await Task.Delay(0);
+            return await _searchLlm.SearchAsync(prompt);
         }
 
         private class McpConfig

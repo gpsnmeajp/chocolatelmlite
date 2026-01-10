@@ -162,9 +162,13 @@ namespace CllDotnet
                     MyLog.LogWrite("画像生成器の初期化");
                     ImageGenerater imageGenerater = new ImageGenerater(fileManager);
 
+                    // 検索LLMの初期化
+                    MyLog.LogWrite("検索LLMの初期化");
+                    SearchLlm searchLlm = new SearchLlm(fileManager);
+
                     // ツールの初期化
                     MyLog.LogWrite("ツールの初期化");
-                    await using Tools tools = new Tools(imageGenerater, fileManager, consoleMonitor);
+                    await using Tools tools = new Tools(imageGenerater, searchLlm, fileManager, consoleMonitor);
                     await tools.InitToolsAsync();
 
                     // 音声合成の初期化

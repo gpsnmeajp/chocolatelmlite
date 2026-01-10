@@ -21,7 +21,7 @@ const PRIMARY_FIELD_KEYS = [
 
 // APIキーのマスク表示時のフォールバック文字列
 const MASKED_API_KEY_FALLBACK = '************';
-const SECRET_FIELD_KEYS = ['LlmApiKey', 'ImageGenerationApiKey'];
+const SECRET_FIELD_KEYS = ['LlmApiKey', 'ImageGenerationApiKey', 'SearchLlmApiKey'];
 
 // 各設定項目の定義（ラベル、説明文、入力タイプ、バリデーションルール）
 const FIELD_DEFINITIONS = {
@@ -291,6 +291,42 @@ const FIELD_DEFINITIONS = {
     note: '<a href="https://openrouter.ai/models?fmt=cards&output_modalities=image">OpenRouterの場合はこちらからモデルを探せます</a>',
     order: 223
   },
+  EnableSearchLlm: {
+    label: '検索LLMを有効化',
+    description: '検索対応LLMモデルをツールとして呼び出してWeb検索を行います。',
+    valueType: 'boolean',
+    order: 224
+  },
+  SearchLlmEndpointUrl: {
+    label: '検索LLM Base URL',
+    description: '検索対応LLMプロバイダーのOpenAI互換APIのURLを入力します。',
+    valueType: 'string',
+    inputType: 'url',
+    allowEmpty: true,
+    placeholder: 'https://...',
+    note: '現在OpenRouterのみ対応しています。<a href="https://github.com/gpsnmeajp/chocolatelmlite">詳しくは説明書をご参照ください。</a>',
+    order: 225
+  },
+  SearchLlmApiKey: {
+    label: '検索LLM APIキー',
+    description: '検索LLMプロバイダーを利用するためのAPIキーです。',
+    valueType: 'string',
+    inputType: 'password',
+    allowEmpty: true,
+    autocomplete: 'off',
+    placeholder: MASKED_API_KEY_FALLBACK,
+    note: '<a href="https://openrouter.ai/settings/keys">OpenRouterの場合はこちらからキーを作成します。</a>',
+    order: 226
+  },
+  SearchLlmModel: {
+    label: '検索LLMモデル',
+    description: '検索に使用するモデル名を指定します。',
+    valueType: 'string',
+    allowEmpty: true,
+    placeholder: 'perplexity/sonar-pro など',
+    note: '<a href="https://openrouter.ai/models?modalities=web-search">OpenRouterの場合はこちらからモデルを探せます</a>',
+    order: 227
+  },
   VoiceVoxBaseUrl: {
     label: 'VOICEVOX Base URL',
     description: 'VOICEVOXエンジンのベースURLです。空欄の場合はVOICEVOX機能が無効化されます。',
@@ -299,7 +335,7 @@ const FIELD_DEFINITIONS = {
     allowEmpty: true,
     placeholder: 'http://localhost:50021',
     note: 'エンジンごとにポート番号は異なります。(VOICEVOX: 50021, VOICEVOX Nemo: 50121, AivisSpeech: 10101)',
-    order: 224
+    order: 230
   },
   DebugMode: {
     label: 'デバッグモード',

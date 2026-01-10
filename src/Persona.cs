@@ -124,6 +124,7 @@ namespace CllDotnet
             var clonedSettings = settings.ShallowCopy();
             clonedSettings.LlmApiKey = string.IsNullOrEmpty(settings.LlmApiKey) ? string.Empty : "************"; // APIキーは返さない
             clonedSettings.ImageGenerationApiKey = string.IsNullOrEmpty(settings.ImageGenerationApiKey) ? string.Empty : "************"; // 画像生成APIキーは返さない
+            clonedSettings.SearchLlmApiKey = string.IsNullOrEmpty(settings.SearchLlmApiKey) ? string.Empty : "************"; // 検索LLM APIキーは返さない
             return new Dictionary<string, object>
             {
                 { "settings", clonedSettings }
@@ -262,6 +263,23 @@ namespace CllDotnet
                         break;
                     case "ImageGenerationModel":
                         settings.ImageGenerationModel = kvp.Value.GetString() ?? settings.ImageGenerationModel;
+                        break;
+                    case "EnableSearchLlm":
+                        settings.EnableSearchLlm = kvp.Value.GetBoolean();
+                        break;
+                    case "SearchLlmEndpointUrl":
+                        settings.SearchLlmEndpointUrl = kvp.Value.GetString() ?? settings.SearchLlmEndpointUrl;
+                        break;
+                    case "SearchLlmApiKey":
+                        var searchKey = kvp.Value.GetString();
+                        if (searchKey == null || searchKey.StartsWith("**"))
+                        {
+                            break;
+                        }
+                        settings.SearchLlmApiKey = searchKey ?? settings.SearchLlmApiKey;
+                        break;
+                    case "SearchLlmModel":
+                        settings.SearchLlmModel = kvp.Value.GetString() ?? settings.SearchLlmModel;
                         break;
                     case "VoiceVoxBaseUrl":
                         settings.VoiceVoxBaseUrl = kvp.Value.GetString() ?? settings.VoiceVoxBaseUrl;
