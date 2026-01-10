@@ -293,7 +293,7 @@ const FIELD_DEFINITIONS = {
   },
   EnableSearchLlm: {
     label: '検索LLMを有効化',
-    description: '検索対応LLMモデルをツールとして呼び出してWeb検索を行います。',
+    description: '検索対応LLMモデルをツールとして呼び出してWeb検索を行います。直接検索エンジン系APIを使用するのに比べて、コンテキスト効率が良く、望ましい結果が得られます。',
     valueType: 'boolean',
     order: 224
   },
@@ -324,7 +324,7 @@ const FIELD_DEFINITIONS = {
     valueType: 'string',
     allowEmpty: true,
     placeholder: 'perplexity/sonar-pro など',
-    note: '<a href="https://openrouter.ai/models?modalities=web-search">OpenRouterの場合はこちらからモデルを探せます</a>',
+    note: 'perplexityを強く推奨します。<a href="https://openrouter.ai/models?fmt=cards&providers=Perplexity">OpenRouterの場合はこちらからモデルを探せます</a>',
     order: 227
   },
   VoiceVoxBaseUrl: {

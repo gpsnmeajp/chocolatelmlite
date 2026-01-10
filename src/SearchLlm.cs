@@ -51,12 +51,17 @@ namespace CllDotnet
 
             MyLog.LogWrite($"検索LLMを呼び出します。プロンプト: {prompt} モデル: {settings.SearchLlmModel} エンドポイント: {settings.SearchLlmEndpointUrl}");
 
+            // 現在日時の取得(タイムゾーン設定を考慮)
+            var timeZone = _fileManager.GetTimeZoneInfo();
+            var localTime = TimeZoneInfo.ConvertTime(DateTime.UtcNow, timeZone);
+            string datetimeString = localTime.ToString("yyyy-MM-dd (ddd) HH:mm:ss");
+
             var requestBody = new
             {
                 model = settings.SearchLlmModel,
                 messages = new[]
                 {
-                    new { role = "system", content = "あなたはWeb検索エージェントです。\nユーザーの求める情報の背景を深く洞察し、検索結果にのみ基づいて回答してください。\n検索結果が不足しており回答できない場合は、分かる範囲の情報とともに、回答できない旨を正直に伝えてください。\n応答結果はLLMに理解しやすいYAML形式で出力してください。" },
+                    new { role = "system", content = $"あなたはWeb検索エージェントです。\nユーザーの求める情報の背景を深く洞察し、検索結果にのみ基づいて回答してください。\n検索結果が不足しており回答できない場合は、分かる範囲の情報とともに、回答できない旨を正直に伝えてください。\n応答結果はLLMに理解しやすいYAML形式で出力してください。\n\n現在時刻: {datetimeString}" },
                     new { role = "user", content = $"{prompt}\n\n<system>ユーザーの求める情報の背景を深く洞察し、検索結果にのみ基づいて回答してください。\n検索結果が不足しており回答できない場合は、分かる範囲の情報とともに、回答できない旨を正直に伝えてください。\n応答結果はLLMに理解しやすいYAML形式で出力してください。</system>" }
                 }
             };
