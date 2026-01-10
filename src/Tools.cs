@@ -302,13 +302,13 @@ namespace CllDotnet
             return textResponse;
         }
 
-        [Description("検索LLMでWeb検索を実行します")]
+        [Description("検索AIを使い対話形式でWeb検索結果を取得します")]
         async Task<string> Search(
-            [Description("検索する内容")] string prompt
+            [Description("質問文")] string question_prompt
         )
         {
             await Task.Delay(0);
-            return await _searchLlm.SearchAsync(prompt);
+            return await _searchLlm.SearchAsync(question_prompt);
         }
 
         private class McpConfig
