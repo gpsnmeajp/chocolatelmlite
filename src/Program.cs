@@ -97,6 +97,7 @@ namespace CllDotnet
                     }
 
                     Thread.Sleep(1000);
+                    exit = true;
                     Start(fileManager).Wait();
                     GC.Collect();
                 }
@@ -119,7 +120,6 @@ namespace CllDotnet
 
         private static void OnSigTerm()
         {
-            if (exit) return;
             exit = true;
             MyLog.LogWrite("SIGTERMを受信しました。サーバーを停止します...");
             cancelHandler?.Invoke();
@@ -128,6 +128,7 @@ namespace CllDotnet
         public static void Stop()
         {
             MyLog.LogWrite("サーバーを再起動します...");
+            exit = false;
             cts.Cancel();
         }
 
@@ -214,7 +215,6 @@ namespace CllDotnet
 
                     cancelHandler = () =>
                     {
-                        if (exit) return;
                         MyLog.LogWrite("サーバーを停止しています...");
                         exit = true;
                         cts.Cancel();
@@ -233,6 +233,7 @@ namespace CllDotnet
             {
                 MyLog.LogWrite("トップレベル例外! 致命的なエラーが発生しました: " + ex.Message);
                 MyLog.LogWrite(ex.StackTrace ?? "");
+                exit = false;
             }
         }
     }
