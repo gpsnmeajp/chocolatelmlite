@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -28,6 +29,8 @@ namespace CllDotnet
             MyLog.LogWrite("Chocolate LM Lite サーバーコンソール");
             MyLog.LogWrite("準備中...");
             Console.CancelKeyPress += Canceler;
+            AssemblyLoadContext.Default.Unloading += _ => OnSigTerm(); // systemdのSIGTERM対策
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => OnSigTerm();
 
             // カレントフォルダ
             MyLog.LogWrite($"カレントフォルダ: {Directory.GetCurrentDirectory()}");
@@ -110,6 +113,14 @@ namespace CllDotnet
 
         private static void Canceler(object? sender, ConsoleCancelEventArgs e)
         {
+            cancelHandler?.Invoke();
+        }
+
+        private static void OnSigTerm()
+        {
+            if (exit) return;
+            exit = true;
+            MyLog.LogWrite("SIGTERMを受信しました。サーバーを停止します...");
             cancelHandler?.Invoke();
         }
 
