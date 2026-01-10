@@ -217,7 +217,7 @@ namespace CllDotnet
                     {
                         MyLog.LogWrite("サーバーを停止しています...");
                         exit = true;
-                        if (!cts.IsCancellationRequested)
+                        if (cts != null && !cts.IsCancellationRequested)
                         {
                             cts.Cancel();
                         }
