@@ -89,6 +89,7 @@ async function init() {
   setupAssetHandlers();
   setupPostPromptControls();
   setupDynamicContextControls();
+  setupSummaryControls();
   setupKeywordKnowledgeControls();
   await Promise.all([loadSettings(), loadPersonaAssets(), loadGeneralSettings(), loadKeywordKnowledgeEntries(), loadMemoryEntries(), loadVoicevoxSpeakers()]);
 }
@@ -129,6 +130,9 @@ async function loadSettings() {
     const voicevoxPauseLengthInput = document.getElementById('voicevoxPauseLength');
     const voicevoxPauseLengthScaleInput = document.getElementById('voicevoxPauseLengthScale');
     const voicevoxSyncTextPrintingInput = document.getElementById('voicevoxSyncTextPrinting');
+    const summaryPromptInput = document.getElementById('summaryPrompt');
+    const summaryTextInput = document.getElementById('summaryText');
+    const summaryTimestampLabel = document.getElementById('summaryTimestampLabel');
 
     // 各フィールドに値を設定
     if (displayInput) {
@@ -229,6 +233,16 @@ async function loadSettings() {
       voicevoxSyncTextPrintingInput.checked = Boolean(data?.voicevox_sync_text_printing);
     }
 
+    if (summaryPromptInput) {
+      summaryPromptInput.value = data?.summary_prompt ?? '';
+    }
+
+    if (summaryTextInput) {
+      summaryTextInput.value = data?.summary_text ?? '';
+    }
+
+    updateSummaryTimestampLabel(data?.summary_timestamp, summaryTimestampLabel);
+
     updatePostPromptState();
     // DynamicContext機能のUIの状態を更新（有効/無効に応じてURL入力欄の活性/非活性を切り替え）
     updateDynamicContextState();
@@ -261,7 +275,9 @@ async function loadSettings() {
       voicevoxPostPhonemeLength: voicevoxPostPhonemeLengthInput?.value ?? '',
       voicevoxPauseLength: voicevoxPauseLengthInput?.value ?? '',
       voicevoxPauseLengthScale: voicevoxPauseLengthScaleInput?.value ?? '',
-      voicevoxSyncTextPrinting: voicevoxSyncTextPrintingInput?.checked ?? false
+      voicevoxSyncTextPrinting: voicevoxSyncTextPrintingInput?.checked ?? false,
+      summaryPrompt: summaryPromptInput?.value ?? '',
+      summaryText: summaryTextInput?.value ?? ''
     };
   } catch (error) {
     console.error('Failed to load settings:', error);
@@ -359,6 +375,82 @@ function updateDynamicContextState() {
   const enabled = toggle.checked;
   urlInput.disabled = !enabled;
   turnsInput.disabled = !enabled;
+}
+
+function setupSummaryControls() {
+  const button = document.getElementById('summaryGenerate');
+  if (!button) {
+    return;
+  }
+
+  button.addEventListener('click', () => {
+    generateSummary();
+  });
+}
+
+function updateSummaryTimestampLabel(timestamp, labelElem) {
+  const label = labelElem ?? document.getElementById('summaryTimestampLabel');
+  if (!label) {
+    return;
+  }
+
+  label.textContent = `作成日時: ${formatSummaryTimestamp(timestamp)}`;
+}
+
+function formatSummaryTimestamp(value) {
+  const ts = Number(value);
+  if (!Number.isFinite(ts) || ts <= 0) {
+    return '未作成';
+  }
+
+  const date = new Date(ts * 1000);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+}
+
+async function generateSummary() {
+  const button = document.getElementById('summaryGenerate');
+  const summaryPromptInput = document.getElementById('summaryPrompt');
+  const summaryTextInput = document.getElementById('summaryText');
+  const summaryTimestampLabel = document.getElementById('summaryTimestampLabel');
+
+  if (!button) {
+    return;
+  }
+
+  const originalLabel = button.textContent;
+  try {
+    button.disabled = true;
+    button.textContent = '要約中...';
+
+    const payload = { summary_prompt: summaryPromptInput?.value ?? '' };
+    const data = await fetchJson('/api/persona/active/summary/generate', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    if (summaryTextInput) {
+      summaryTextInput.value = data?.summary_text ?? '';
+    }
+
+    updateSummaryTimestampLabel(data?.summary_timestamp, summaryTimestampLabel);
+
+    originalSettings.summaryPrompt = summaryPromptInput?.value ?? '';
+    originalSettings.summaryText = summaryTextInput?.value ?? '';
+
+    showAlertModal('会話履歴を要約しました。', { title: '完了' });
+  } catch (error) {
+    console.error('Failed to generate summary:', error);
+    showAlertModal('要約の生成に失敗しました。設定とネットワークを確認して再試行してください。', { title: 'エラー' });
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel ?? '会話履歴を要約';
+  }
 }
 
 function setTurnsWithinBounds(input) {
@@ -1285,6 +1377,8 @@ async function saveSettings() {
   const parsedCutoff = Number.parseInt(cutoffInput?.value ?? '', 10);
   payload.talk_history_cutoff_by_past_hours = Number.isFinite(parsedCutoff) && parsedCutoff >= 0 ? parsedCutoff : 0;
   payload.remove_attachment = document.getElementById('removeAttachment')?.checked ?? false;
+  payload.summary_prompt = document.getElementById('summaryPrompt')?.value ?? '';
+  payload.summary_text = document.getElementById('summaryText')?.value ?? '';
   payload.voicevox_speaker_id = parseNumberInput(document.getElementById('voicevoxSpeakerId')?.value, { allowNegative: true, integer: true });
   payload.voicevox_extract_mode = document.getElementById('voicevoxExtractMode')?.value ?? 'none';
   payload.voicevox_speed_scale = parseNumberInput(document.getElementById('voicevoxSpeedScale')?.value);
@@ -1342,7 +1436,9 @@ async function saveSettings() {
       voicevoxPostPhonemeLength: normalizeNumberForInput(payload.voicevox_post_phoneme_length),
       voicevoxPauseLength: normalizeNumberForInput(payload.voicevox_pause_length),
       voicevoxPauseLengthScale: normalizeNumberForInput(payload.voicevox_pause_length_scale),
-      voicevoxSyncTextPrinting: payload.voicevox_sync_text_printing
+      voicevoxSyncTextPrinting: payload.voicevox_sync_text_printing,
+      summaryPrompt: payload.summary_prompt,
+      summaryText: payload.summary_text
     };
 
     // トーク画面に遷移
@@ -1390,6 +1486,8 @@ function goBack() {
   const voicevoxPauseLengthInput = document.getElementById('voicevoxPauseLength');
   const voicevoxPauseLengthScaleInput = document.getElementById('voicevoxPauseLengthScale');
   const voicevoxSyncTextPrintingInput = document.getElementById('voicevoxSyncTextPrinting');
+  const summaryPromptInput = document.getElementById('summaryPrompt');
+  const summaryTextInput = document.getElementById('summaryText');
 
   // 変更があるかどうかをチェック
   const hasChanges =
@@ -1407,6 +1505,8 @@ function goBack() {
     (dynamicContextHistoryTurnsInput?.value ?? '') !== originalSettings.dynamicContextHistoryTurns ||
     (talkHistoryCutoffHoursInput?.value ?? '') !== originalSettings.talkHistoryCutoffHours ||
     (removeAttachmentInput?.checked ?? false) !== originalSettings.removeAttachment ||
+    (summaryPromptInput?.value ?? '') !== originalSettings.summaryPrompt ||
+    (summaryTextInput?.value ?? '') !== originalSettings.summaryText ||
     (voicevoxSpeakerIdInput?.value ?? '') !== originalSettings.voicevoxSpeakerId ||
     (voicevoxExtractModeInput?.value ?? '') !== originalSettings.voicevoxExtractMode ||
     (voicevoxSpeedScaleInput?.value ?? '') !== originalSettings.voicevoxSpeedScale ||

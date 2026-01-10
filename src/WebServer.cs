@@ -528,6 +528,13 @@ namespace CllDotnet
                 await context.Response.WriteAsync(DictionaryToJson($"GET /api/persona/active/memory", persona.GetActivePersonaMemory()));
             });
 
+            app.MapPost("/api/persona/active/summary/generate", async context =>
+            {
+                context.Response.ContentType = "application/json";
+                var bodyDict = await ParseRequestBodyAsync($"POST /api/persona/active/summary/generate", context);
+                await context.Response.WriteAsync(DictionaryToJson($"POST /api/persona/active/summary/generate", await persona.GenerateActivePersonaSummary(bodyDict, cancellationToken)));
+            });
+
             app.MapGet("/api/persona/active/keyword-knowledge", async context =>
             {
                 context.Response.ContentType = "application/json";

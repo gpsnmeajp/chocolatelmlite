@@ -66,6 +66,12 @@ namespace CllDotnet
         public string UpdatedAt { get; set; } = "";
     }
 
+    public class YamlSummary
+    {
+        public string Text { get; set; } = string.Empty;
+        public long Timestamp { get; set; } = 0;
+    }
+
     public class YamlManage
     {
         public int ActivePersonaId { get; set; } = 0;
@@ -115,6 +121,9 @@ namespace CllDotnet
         public string SearchLlmEndpointUrl { get; set; } = "";
         public string SearchLlmApiKey { get; set; } = "";
         public string SearchLlmModel { get; set; } = "perplexity/sonar-pro";
+        public string SummaryLlmEndpointUrl { get; set; } = "";
+        public string SummaryLlmApiKey { get; set; } = "";
+        public string SummaryLlmModel { get; set; } = "openai/gpt-oss-20b";
         public string VoiceVoxBaseUrl { get; set; } = "";
         public bool DebugMode { get; set; } = false;
 
@@ -173,7 +182,10 @@ namespace CllDotnet
         private readonly string talkJsonlFilename = "talk.jsonl";
         private readonly string talkDbFilename = "talk.sqlite3";
         private readonly string memoryFilename = "memory.yaml";
+        private readonly string summaryPromptFilename = "summary_prompt.txt";
+        private readonly string summaryFilename = "summary.yaml";
         private readonly string mcpJsonFilename = "mcp.json";
+        private const string defaultSummaryPrompt = "会話履歴を短く要約してください。重要な決定事項・タスク・未解決事項が分かるように日本語で箇条書きしてください。";
 
         // アプリケーション全体から参照される全体設定
         public YamlGeneral generalSettings { get; private set; }
@@ -431,6 +443,14 @@ namespace CllDotnet
             // システムプロンプトファイルの作成
             string systemPromptPath = Path.Combine(personaDir, systemPromptFilename);
             File.WriteAllText(systemPromptPath, "あなたは親切なアシスタントです。ユーザーの質問に丁寧に回答してください。");
+
+            // サマリープロンプトファイルの作成
+            string summaryPromptPath = Path.Combine(personaDir, summaryPromptFilename);
+            File.WriteAllText(summaryPromptPath, defaultSummaryPrompt);
+
+            // サマリーファイルの作成
+            string summaryPath = Path.Combine(personaDir, summaryFilename);
+            SaveYaml(new YamlSummary(), summaryPath);
 
             // ポストプロセススクリプトファイルの作成
             string postProcessScriptPath = Path.Combine(personaDir, postProcessScriptFilename);
@@ -907,6 +927,79 @@ namespace CllDotnet
             string systemPromptPath = Path.Combine(personaDir, systemPromptFilename);
             File.WriteAllText(systemPromptPath, prompt);
             MyLog.LogWrite($"アクティブなペルソナのシステムプロンプトを保存: {systemPromptPath}");
+        }
+
+        // アクティブなペルソナフォルダ内のサマリープロンプトを取得する
+        public string GetSummaryPromptFromActivePersona()
+        {
+            var activeId = GetActivePersonaId();
+            if (activeId == null)
+            {
+                MyLog.LogWrite("アクティブなペルソナがありません。サマリープロンプトの取得に失敗しました。");
+                throw new InvalidOperationException("アクティブなペルソナがありません。サマリープロンプトの取得に失敗しました。");
+            }
+
+            string personaDir = GetPersonaDirectoryById(activeId.Value);
+            string summaryPromptPath = Path.Combine(personaDir, summaryPromptFilename);
+            if (!File.Exists(summaryPromptPath))
+            {
+                File.WriteAllText(summaryPromptPath, defaultSummaryPrompt);
+            }
+
+            return File.ReadAllText(summaryPromptPath);
+        }
+
+        // アクティブなペルソナフォルダ内のサマリープロンプトを保存する
+        public void SaveSummaryPromptToActivePersona(string prompt)
+        {
+            var activeId = GetActivePersonaId();
+            if (activeId == null)
+            {
+                MyLog.LogWrite("アクティブなペルソナがありません。サマリープロンプトの保存に失敗しました。");
+                throw new InvalidOperationException("アクティブなペルソナがありません。サマリープロンプトの保存に失敗しました。");
+            }
+
+            string personaDir = GetPersonaDirectoryById(activeId.Value);
+            string summaryPromptPath = Path.Combine(personaDir, summaryPromptFilename);
+            File.WriteAllText(summaryPromptPath, prompt ?? string.Empty);
+            MyLog.LogWrite($"アクティブなペルソナのサマリープロンプトを保存: {summaryPromptPath}");
+        }
+
+        // アクティブなペルソナのサマリーを取得する
+        public YamlSummary GetActivePersonaSummary()
+        {
+            var activeId = GetActivePersonaId();
+            if (activeId == null)
+            {
+                MyLog.LogWrite("アクティブなペルソナがありません。サマリーの取得に失敗しました。");
+                throw new InvalidOperationException("アクティブなペルソナがありません。サマリーの取得に失敗しました。");
+            }
+
+            string personaDir = GetPersonaDirectoryById(activeId.Value);
+            string summaryPath = Path.Combine(personaDir, summaryFilename);
+            var summary = LoadYamlOrCreateNew<YamlSummary>(summaryPath);
+            return summary;
+        }
+
+        // アクティブなペルソナのサマリーを保存する
+        public void SaveActivePersonaSummary(string summaryText, long timestamp)
+        {
+            var activeId = GetActivePersonaId();
+            if (activeId == null)
+            {
+                MyLog.LogWrite("アクティブなペルソナがありません。サマリーの保存に失敗しました。");
+                throw new InvalidOperationException("アクティブなペルソナがありません。サマリーの保存に失敗しました。");
+            }
+
+            string personaDir = GetPersonaDirectoryById(activeId.Value);
+            string summaryPath = Path.Combine(personaDir, summaryFilename);
+            var summary = new YamlSummary
+            {
+                Text = summaryText ?? string.Empty,
+                Timestamp = timestamp
+            };
+            SaveYaml(summary, summaryPath);
+            MyLog.LogWrite($"アクティブなペルソナのサマリーを保存: {summaryPath}");
         }
 
         // アクティブなペルソナフォルダ内のポストプロセススクリプトを取得する

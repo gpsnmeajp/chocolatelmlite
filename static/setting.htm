@@ -74,12 +74,29 @@
           </label>
           <textarea id="postPrompt" rows="6" placeholder="例: 必ず丁寧な口調で答えること..."></textarea>
         </div>
-
         <details class="advanced-settings">
           <summary>
             <span class="advanced-settings__icon">▶</span>
             <span class="advanced-settings__label">応用的な設定</span>
           </summary>
+          <div class="info-message">
+            🧾 <strong>会話要約:</strong><br>
+            会話履歴を要約します。
+          </div>
+          <div class="form-group">
+            <label>サマリープロンプト</label>
+            <textarea id="summaryPrompt" rows="6" placeholder="会話要約の指示を入力..."></textarea>
+          </div>
+          <div class="form-group" style="gap: 8px; display: flex; flex-direction: column;">
+            <div style="display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+              <div class="form-hint" id="summaryTimestampLabel">作成日時: 未作成</div>
+              <button type="button" class="btn-primary" id="summaryGenerate">会話履歴を要約</button>
+            </div>
+            <label>要約結果 (編集可)</label>
+            <textarea id="summaryText" rows="8" placeholder="会話の要約がここに表示されます..."></textarea>
+          </div>
+
+
           <div class="advanced-settings__content">
             <div class="info-message">
               🕐️ <strong>会話履歴の時間カットオフ:</strong><br>

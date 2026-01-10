@@ -125,6 +125,7 @@ namespace CllDotnet
             clonedSettings.LlmApiKey = string.IsNullOrEmpty(settings.LlmApiKey) ? string.Empty : "************"; // APIキーは返さない
             clonedSettings.ImageGenerationApiKey = string.IsNullOrEmpty(settings.ImageGenerationApiKey) ? string.Empty : "************"; // 画像生成APIキーは返さない
             clonedSettings.SearchLlmApiKey = string.IsNullOrEmpty(settings.SearchLlmApiKey) ? string.Empty : "************"; // 検索LLM APIキーは返さない
+            clonedSettings.SummaryLlmApiKey = string.IsNullOrEmpty(settings.SummaryLlmApiKey) ? string.Empty : "************"; // 要約LLM APIキーは返さない
             return new Dictionary<string, object>
             {
                 { "settings", clonedSettings }
@@ -280,6 +281,20 @@ namespace CllDotnet
                         break;
                     case "SearchLlmModel":
                         settings.SearchLlmModel = kvp.Value.GetString() ?? settings.SearchLlmModel;
+                        break;
+                    case "SummaryLlmEndpointUrl":
+                        settings.SummaryLlmEndpointUrl = kvp.Value.GetString() ?? settings.SummaryLlmEndpointUrl;
+                        break;
+                    case "SummaryLlmApiKey":
+                        var summaryKey = kvp.Value.GetString();
+                        if (summaryKey == null || summaryKey.StartsWith("**"))
+                        {
+                            break;
+                        }
+                        settings.SummaryLlmApiKey = summaryKey ?? settings.SummaryLlmApiKey;
+                        break;
+                    case "SummaryLlmModel":
+                        settings.SummaryLlmModel = kvp.Value.GetString() ?? settings.SummaryLlmModel;
                         break;
                     case "VoiceVoxBaseUrl":
                         settings.VoiceVoxBaseUrl = kvp.Value.GetString() ?? settings.VoiceVoxBaseUrl;
@@ -646,6 +661,7 @@ namespace CllDotnet
         {
             // nameとsystem_promptを抽出して保存する
             var personaSettings = fileManager.GetActivePersonaSettings();
+            string? summaryTextFromClient = null;
 
             int ParseIntOrDefault(JsonElement element, int defaultValue)
             {
@@ -747,6 +763,16 @@ namespace CllDotnet
                 personaSettings.RemoveAttachment = removeAttachmentElement.GetBoolean();
             }
 
+            if (content.TryGetValue("summary_prompt", out var summaryPromptElement) && summaryPromptElement.ValueKind == JsonValueKind.String)
+            {
+                fileManager.SaveSummaryPromptToActivePersona(summaryPromptElement.GetString() ?? string.Empty);
+            }
+
+            if (content.TryGetValue("summary_text", out var summaryTextElement) && summaryTextElement.ValueKind == JsonValueKind.String)
+            {
+                summaryTextFromClient = summaryTextElement.GetString() ?? string.Empty;
+            }
+
             if (content.TryGetValue("post_process_script", out var postProcessScriptElement) && postProcessScriptElement.ValueKind == JsonValueKind.String)
             {
                 var script = postProcessScriptElement.GetString() ?? string.Empty;
@@ -780,6 +806,16 @@ namespace CllDotnet
 
             fileManager.SaveActivePersonaSettings(personaSettings);
 
+            if (summaryTextFromClient != null)
+            {
+                var currentSummary = fileManager.GetActivePersonaSummary();
+                if (!string.Equals(summaryTextFromClient, currentSummary?.Text, StringComparison.Ordinal))
+                {
+                    var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    fileManager.SaveActivePersonaSummary(summaryTextFromClient, now);
+                }
+            }
+
             if (content.ContainsKey("system_prompt") && content["system_prompt"].ValueKind == JsonValueKind.String)
             {
                 var systemPromptValue = content["system_prompt"].GetString() ?? "";
@@ -792,6 +828,8 @@ namespace CllDotnet
             var settings = fileManager.GetActivePersonaSettings();
             var system_prompt = fileManager.GetSystemPromptFromActivePersona();
             var post_process_script = fileManager.GetActivePersonaPostProcessScript();
+            var summary_prompt = fileManager.GetSummaryPromptFromActivePersona();
+            var summary = fileManager.GetActivePersonaSummary();
 
             // YAMLからname, plain textからsystem_promptを抽出して返す
             var result = new Dictionary<string, object?>();
@@ -822,6 +860,9 @@ namespace CllDotnet
                 result["voicevox_sync_text_printing"] = settings.VoiceVoxSyncTextPrinting;
                 result["system_prompt"] = system_prompt ?? "";
                 result["post_process_script"] = post_process_script;
+                result["summary_prompt"] = summary_prompt;
+                result["summary_text"] = summary?.Text ?? string.Empty;
+                result["summary_timestamp"] = summary?.Timestamp ?? 0;
             }
             
             // nullでないキーのみ抽出して返す
@@ -897,6 +938,45 @@ namespace CllDotnet
             }
 
             return new Dictionary<string, object> { { "error", "指定されたIDのキーワードが見つかりません。" } };
+        }
+
+        public async Task<Dictionary<string, object>> GenerateActivePersonaSummary(Dictionary<string, JsonElement> content, CancellationToken cancellationToken)
+        {
+            await Task.Delay(0, cancellationToken);
+
+            // ユーザーがプロンプトを変更した場合に、即座に反映するため
+            string? promptOverride = null;
+            if (content.TryGetValue("summary_prompt", out var promptElement) && promptElement.ValueKind == JsonValueKind.String)
+            {
+                promptOverride = promptElement.GetString() ?? string.Empty;
+                fileManager.SaveSummaryPromptToActivePersona(promptOverride);
+            }
+
+            var summaryPrompt = promptOverride ?? fileManager.GetSummaryPromptFromActivePersona();
+            var talkEntries = fileManager.GetAllTalkHistoryAllFromActivePersonaCached();
+            if (talkEntries.Count == 0)
+            {
+                return new Dictionary<string, object> { { "error", "要約できる会話履歴がありません。" } };
+            }
+
+            var summaryLlm = new SummaryLlm(fileManager);
+            var result = await summaryLlm.GenerateSummaryAsync(summaryPrompt, talkEntries, cancellationToken);
+            if (!result.Success || string.IsNullOrWhiteSpace(result.SummaryText))
+            {
+                var message = string.IsNullOrWhiteSpace(result.Message) ? "要約の生成に失敗しました。" : result.Message;
+                return new Dictionary<string, object> { { "error", message } };
+            }
+
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            fileManager.SaveActivePersonaSummary(result.SummaryText!, timestamp);
+
+            return new Dictionary<string, object>
+            {
+                { "success", "done" },
+                { "summary_text", result.SummaryText! },
+                { "summary_timestamp", timestamp },
+                { "summary_prompt", summaryPrompt }
+            };
         }
 
         private TalkEntry ToTalkEntry(Dictionary<string, JsonElement> content, Guid existingUuid)

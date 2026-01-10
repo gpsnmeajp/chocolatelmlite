@@ -21,7 +21,7 @@ const PRIMARY_FIELD_KEYS = [
 
 // APIキーのマスク表示時のフォールバック文字列
 const MASKED_API_KEY_FALLBACK = '************';
-const SECRET_FIELD_KEYS = ['LlmApiKey', 'ImageGenerationApiKey', 'SearchLlmApiKey'];
+const SECRET_FIELD_KEYS = ['LlmApiKey', 'ImageGenerationApiKey', 'SearchLlmApiKey', 'SummaryLlmApiKey'];
 
 // 各設定項目の定義（ラベル、説明文、入力タイプ、バリデーションルール）
 const FIELD_DEFINITIONS = {
@@ -327,6 +327,34 @@ const FIELD_DEFINITIONS = {
     note: 'perplexityを強く推奨します。<a href="https://openrouter.ai/models?fmt=cards&providers=Perplexity">OpenRouterの場合はこちらからモデルを探せます</a>',
     order: 227
   },
+  SummaryLlmEndpointUrl: {
+    label: '要約LLM Base URL',
+    description: '会話履歴の要約に使用するLLMのBase URLです。OpenAI互換APIのURLを指定してください。',
+    valueType: 'string',
+    inputType: 'url',
+    allowEmpty: true,
+    placeholder: 'https://...',
+    note: '<a href="https://github.com/gpsnmeajp/chocolatelmlite">詳しくは説明書をご参照ください。</a>',
+    order: 228
+  },
+  SummaryLlmApiKey: {
+    label: '要約LLM APIキー',
+    description: '要約LLMプロバイダーを利用するためのAPIキーです。',
+    valueType: 'string',
+    inputType: 'password',
+    allowEmpty: true,
+    autocomplete: 'off',
+    placeholder: MASKED_API_KEY_FALLBACK,
+    order: 229
+  },
+  SummaryLlmModel: {
+    label: '要約LLMモデル',
+    description: '要約生成に使用するモデル名を指定します。',
+    valueType: 'string',
+    allowEmpty: true,
+    placeholder: 'openai/gpt-oss-20b など',
+    order: 230
+  },
   VoiceVoxBaseUrl: {
     label: 'VOICEVOX Base URL',
     description: 'VOICEVOXエンジンのベースURLです。空欄の場合はVOICEVOX機能が無効化されます。',
@@ -335,7 +363,7 @@ const FIELD_DEFINITIONS = {
     allowEmpty: true,
     placeholder: 'http://localhost:50021',
     note: 'エンジンごとにポート番号は異なります。(VOICEVOX: 50021, VOICEVOX Nemo: 50121, AivisSpeech: 10101)',
-    order: 230
+    order: 231
   },
   DebugMode: {
     label: 'デバッグモード',
