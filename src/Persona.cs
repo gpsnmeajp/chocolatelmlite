@@ -708,6 +708,11 @@ namespace CllDotnet
                 personaSettings.EnableDynamicContext = enableDynamicContextElement.GetBoolean();
             }
 
+            if (content.TryGetValue("talk_history_cutoff_by_past_hours", out var talkHistoryCutoffElement))
+            {
+                personaSettings.TalkHistoryCutoffByPastHours = ParseIntOrDefault(talkHistoryCutoffElement, personaSettings.TalkHistoryCutoffByPastHours);
+            }
+
             if (content.ContainsKey("dynamic_context_history_turns") && content["dynamic_context_history_turns"].ValueKind == JsonValueKind.Number)
             {
                 personaSettings.DynamicContextHistoryTurns = content["dynamic_context_history_turns"].GetInt32();
@@ -784,6 +789,7 @@ namespace CllDotnet
                 result["enable_dynamic_context"] = settings.EnableDynamicContext;
                 result["dynamic_context_url"] = settings.DynamicContextUrl;
                 result["dynamic_context_history_turns"] = settings.DynamicContextHistoryTurns;
+                result["talk_history_cutoff_by_past_hours"] = settings.TalkHistoryCutoffByPastHours;
                 result["remove_attachment"] = settings.RemoveAttachment;
                 result["voicevox_speaker_id"] = settings.VoiceVoxSpeakerId;
                 result["voicevox_extract_mode"] = settings.VoiceVoxExtractMode;
