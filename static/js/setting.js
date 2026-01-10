@@ -116,6 +116,7 @@ async function loadSettings() {
     const enableDynamicContextInput = document.getElementById('enableDynamicContext');
     const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
     const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
+    const talkHistoryCutoffHoursInput = document.getElementById('talkHistoryCutoffHours');
     const removeAttachmentInput = document.getElementById('removeAttachment');
     const voicevoxSpeakerIdInput = document.getElementById('voicevoxSpeakerId');
     const voicevoxExtractModeInput = document.getElementById('voicevoxExtractMode');
@@ -186,6 +187,12 @@ async function loadSettings() {
       dynamicContextHistoryTurnsInput.value = Number.isFinite(parsed) && parsed >= 0 ? parsed : 8;
     }
 
+    if (talkHistoryCutoffHoursInput) {
+      const raw = data?.talk_history_cutoff_by_past_hours;
+      const parsed = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number.parseInt(raw, 10);
+      talkHistoryCutoffHoursInput.value = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    }
+
     if (removeAttachmentInput) {
       removeAttachmentInput.checked = Boolean(data?.remove_attachment);
     }
@@ -242,6 +249,7 @@ async function loadSettings() {
       // DynamicContextのURL設定を保存（変更検知に使用）
       dynamicContextUrl: dynamicContextUrlInput?.value ?? '',
       dynamicContextHistoryTurns: dynamicContextHistoryTurnsInput?.value ?? '',
+      talkHistoryCutoffHours: talkHistoryCutoffHoursInput?.value ?? '',
       removeAttachment: removeAttachmentInput?.checked ?? false,
       voicevoxSpeakerId: voicevoxSpeakerIdInput?.value ?? '',
       voicevoxExtractMode: voicevoxExtractModeInput?.value ?? 'none',
@@ -1273,6 +1281,9 @@ async function saveSettings() {
   const turnsInput = document.getElementById('dynamicContextHistoryTurns');
   const parsedTurns = Number.parseInt(turnsInput?.value ?? '', 10);
   payload.dynamic_context_history_turns = Number.isFinite(parsedTurns) && parsedTurns >= 0 ? parsedTurns : 8;
+  const cutoffInput = document.getElementById('talkHistoryCutoffHours');
+  const parsedCutoff = Number.parseInt(cutoffInput?.value ?? '', 10);
+  payload.talk_history_cutoff_by_past_hours = Number.isFinite(parsedCutoff) && parsedCutoff >= 0 ? parsedCutoff : 0;
   payload.remove_attachment = document.getElementById('removeAttachment')?.checked ?? false;
   payload.voicevox_speaker_id = parseNumberInput(document.getElementById('voicevoxSpeakerId')?.value, { allowNegative: true, integer: true });
   payload.voicevox_extract_mode = document.getElementById('voicevoxExtractMode')?.value ?? 'none';
@@ -1319,6 +1330,7 @@ async function saveSettings() {
       enableDynamicContext: payload.enable_dynamic_context,
       dynamicContextUrl: payload.dynamic_context_url,
       dynamicContextHistoryTurns: String(payload.dynamic_context_history_turns),
+      talkHistoryCutoffHours: String(payload.talk_history_cutoff_by_past_hours),
       removeAttachment: payload.remove_attachment,
       voicevoxSpeakerId: normalizeNumberForInput(payload.voicevox_speaker_id, { allowNegative: true, integer: true }),
       voicevoxExtractMode: payload.voicevox_extract_mode ?? 'none',
@@ -1365,6 +1377,7 @@ function goBack() {
   const enableDynamicContextInput = document.getElementById('enableDynamicContext');
   const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
   const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
+  const talkHistoryCutoffHoursInput = document.getElementById('talkHistoryCutoffHours');
   const removeAttachmentInput = document.getElementById('removeAttachment');
   const voicevoxSpeakerIdInput = document.getElementById('voicevoxSpeakerId');
   const voicevoxExtractModeInput = document.getElementById('voicevoxExtractMode');
@@ -1392,6 +1405,7 @@ function goBack() {
     (enableDynamicContextInput?.checked ?? false) !== originalSettings.enableDynamicContext ||
     (dynamicContextUrlInput?.value ?? '') !== originalSettings.dynamicContextUrl ||
     (dynamicContextHistoryTurnsInput?.value ?? '') !== originalSettings.dynamicContextHistoryTurns ||
+    (talkHistoryCutoffHoursInput?.value ?? '') !== originalSettings.talkHistoryCutoffHours ||
     (removeAttachmentInput?.checked ?? false) !== originalSettings.removeAttachment ||
     (voicevoxSpeakerIdInput?.value ?? '') !== originalSettings.voicevoxSpeakerId ||
     (voicevoxExtractModeInput?.value ?? '') !== originalSettings.voicevoxExtractMode ||

@@ -82,6 +82,17 @@
           </summary>
           <div class="advanced-settings__content">
             <div class="info-message">
+              🕐️ <strong>会話履歴の時間カットオフ:</strong><br>
+              現在時刻から指定時間より古いメッセージをAIへの送信対象から除外します。0で無効。<br>
+              時間を開けてから会話した際に、古い会話内容に引きずられないようにする場合に有効です。<br>
+              メモリ機能には影響しないため、重要な話題などはメモリに保存しておくことを推奨します。<br>
+            </div>
+            <div class="form-group">
+              <label>会話履歴の時間カットオフ (1時間単位)</label>
+              <input type="number" id="talkHistoryCutoffHours" value="0" min="0" step="1" placeholder="0">
+            </div>
+
+            <div class="info-message">
               🪄 <strong>ポストプロセススクリプト:</strong><br>
               アシスタントの各メッセージ本文へ加工を施せます。<br>
               JavaScriptの <code>postProcess(message)</code> 関数を定義し、置換等の処理をしてreturnしてください。<br>
