@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace CllDotnet
 {
@@ -55,8 +56,8 @@ namespace CllDotnet
                 model = settings.SearchLlmModel,
                 messages = new[]
                 {
-                    new { role = "system", content = "あなたはWeb検索エージェントです。\nユーザーの求める情報の背景を深く洞察し、検索結果にのみ基づいて回答してください。\n検索結果が不足しており回答できない場合は、分かる範囲の情報とともに、回答できない旨を正直に伝えてください。" },
-                    new { role = "user", content = prompt }
+                    new { role = "system", content = "あなたはWeb検索エージェントです。\nユーザーの求める情報の背景を深く洞察し、検索結果にのみ基づいて回答してください。\n検索結果が不足しており回答できない場合は、分かる範囲の情報とともに、回答できない旨を正直に伝えてください。\n応答結果はLLMに理解しやすいYAML形式で出力してください。" },
+                    new { role = "user", content = $"{prompt}\n\n<system>ユーザーの求める情報の背景を深く洞察し、検索結果にのみ基づいて回答してください。\n検索結果が不足しており回答できない場合は、分かる範囲の情報とともに、回答できない旨を正直に伝えてください。\n応答結果はLLMに理解しやすいYAML形式で出力してください。</system>" }
                 }
             };
 
@@ -136,8 +137,51 @@ namespace CllDotnet
                 if (messageElement.TryGetProperty("content", out var contentElement))
                 {
                     var textResponse = contentElement.GetString() ?? string.Empty;
+                    var annotationLines = new List<string>();
+
+                    // OpenRouter-style annotations
+                    if (messageElement.TryGetProperty("annotations", out var annotationsElement) && annotationsElement.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var ann in annotationsElement.EnumerateArray())
+                        {
+                            if (ann.TryGetProperty("type", out var typeElement) && typeElement.GetString() == "url_citation")
+                            {
+                                if (ann.TryGetProperty("url_citation", out var urlCitation) && urlCitation.ValueKind == JsonValueKind.Object)
+                                {
+                                    var url = urlCitation.TryGetProperty("url", out var urlEl) ? (urlEl.GetString() ?? string.Empty) : string.Empty;
+                                    var title = urlCitation.TryGetProperty("title", out var titleEl) ? (titleEl.GetString() ?? string.Empty) : string.Empty;
+                                    if (!string.IsNullOrWhiteSpace(url))
+                                    {
+                                        var label = string.IsNullOrWhiteSpace(title) ? url : title;
+                                        annotationLines.Add($"{annotationLines.Count + 1}. {label} - {url}");
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Fallback: top-level citations list
+                    if (annotationLines.Count == 0 && document.RootElement.TryGetProperty("citations", out var citationsElement) && citationsElement.ValueKind == JsonValueKind.Array)
+                    {
+                        int idx = 1;
+                        foreach (var cite in citationsElement.EnumerateArray())
+                        {
+                            var url = cite.GetString();
+                            if (!string.IsNullOrWhiteSpace(url))
+                            {
+                                annotationLines.Add($"{idx}. {url}");
+                                idx++;
+                            }
+                        }
+                    }
+
+                    if (annotationLines.Count > 0)
+                    {
+                        textResponse += "\n\n出展:\n" + string.Join("\n", annotationLines);
+                    }
+
                     MyLog.LogWrite($"検索LLMの応答内容: {textResponse}");
-                    return textResponse;
+                    return $"<system>以下は、検索LLMからの応答結果です。ユーザーへの応答に適切に活用してください。</system>\n\n<SearchResult>\n{textResponse}\n</SearchResult>\n\n<system>以上が、検索LLMからの応答結果です。</system>";
                 }
             }
 
