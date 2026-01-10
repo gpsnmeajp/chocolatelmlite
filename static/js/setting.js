@@ -118,6 +118,10 @@ async function loadSettings() {
     const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
     const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
     const talkHistoryCutoffHoursInput = document.getElementById('talkHistoryCutoffHours');
+    const talkHistoryCutoffBeforeSummaryInput = document.getElementById('talkHistoryCutoffBeforeSummary');
+    const autoSummarizeModeSelect = document.getElementById('autoSummarizeMode');
+    const autoSummarizeIntervalInput = document.getElementById('autoSummarizeIntervalHours');
+    const summarizeTurnsInput = document.getElementById('summarizeTurns');
     const removeAttachmentInput = document.getElementById('removeAttachment');
     const voicevoxSpeakerIdInput = document.getElementById('voicevoxSpeakerId');
     const voicevoxExtractModeInput = document.getElementById('voicevoxExtractMode');
@@ -197,6 +201,27 @@ async function loadSettings() {
       talkHistoryCutoffHoursInput.value = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
     }
 
+    if (talkHistoryCutoffBeforeSummaryInput) {
+      talkHistoryCutoffBeforeSummaryInput.checked = Boolean(data?.talk_history_cutoff_before_summary);
+    }
+
+    if (autoSummarizeModeSelect) {
+      const mode = (data?.auto_summarize_mode ?? 'none').toString();
+      autoSummarizeModeSelect.value = mode === 'time_based' ? 'time_based' : 'none';
+    }
+
+    if (autoSummarizeIntervalInput) {
+      const raw = data?.auto_summarize_interval_hours;
+      const parsed = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number.parseInt(raw, 10);
+      autoSummarizeIntervalInput.value = Number.isFinite(parsed) && parsed > 0 ? parsed : 24;
+    }
+
+    if (summarizeTurnsInput) {
+      const raw = data?.summarize_turns;
+      const parsed = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number.parseInt(raw, 10);
+      summarizeTurnsInput.value = Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
+    }
+
     if (removeAttachmentInput) {
       removeAttachmentInput.checked = Boolean(data?.remove_attachment);
     }
@@ -264,6 +289,10 @@ async function loadSettings() {
       dynamicContextUrl: dynamicContextUrlInput?.value ?? '',
       dynamicContextHistoryTurns: dynamicContextHistoryTurnsInput?.value ?? '',
       talkHistoryCutoffHours: talkHistoryCutoffHoursInput?.value ?? '',
+      talkHistoryCutoffBeforeSummary: talkHistoryCutoffBeforeSummaryInput?.checked ?? false,
+      autoSummarizeMode: autoSummarizeModeSelect?.value ?? 'none',
+      autoSummarizeIntervalHours: autoSummarizeIntervalInput?.value ?? '',
+      summarizeTurns: summarizeTurnsInput?.value ?? '',
       removeAttachment: removeAttachmentInput?.checked ?? false,
       voicevoxSpeakerId: voicevoxSpeakerIdInput?.value ?? '',
       voicevoxExtractMode: voicevoxExtractModeInput?.value ?? 'none',
@@ -1376,6 +1405,14 @@ async function saveSettings() {
   const cutoffInput = document.getElementById('talkHistoryCutoffHours');
   const parsedCutoff = Number.parseInt(cutoffInput?.value ?? '', 10);
   payload.talk_history_cutoff_by_past_hours = Number.isFinite(parsedCutoff) && parsedCutoff >= 0 ? parsedCutoff : 0;
+  payload.talk_history_cutoff_before_summary = document.getElementById('talkHistoryCutoffBeforeSummary')?.checked ?? false;
+  payload.auto_summarize_mode = document.getElementById('autoSummarizeMode')?.value ?? 'none';
+  const autoSummarizeIntervalInput = document.getElementById('autoSummarizeIntervalHours');
+  const parsedAutoInterval = Number.parseInt(autoSummarizeIntervalInput?.value ?? '', 10);
+  payload.auto_summarize_interval_hours = Number.isFinite(parsedAutoInterval) && parsedAutoInterval > 0 ? parsedAutoInterval : 24;
+  const summarizeTurnsInput = document.getElementById('summarizeTurns');
+  const parsedSummarizeTurns = Number.parseInt(summarizeTurnsInput?.value ?? '', 10);
+  payload.summarize_turns = Number.isFinite(parsedSummarizeTurns) && parsedSummarizeTurns > 0 ? parsedSummarizeTurns : 100;
   payload.remove_attachment = document.getElementById('removeAttachment')?.checked ?? false;
   payload.summary_prompt = document.getElementById('summaryPrompt')?.value ?? '';
   payload.summary_text = document.getElementById('summaryText')?.value ?? '';
@@ -1424,6 +1461,10 @@ async function saveSettings() {
       enableDynamicContext: payload.enable_dynamic_context,
       dynamicContextUrl: payload.dynamic_context_url,
       dynamicContextHistoryTurns: String(payload.dynamic_context_history_turns),
+      talkHistoryCutoffBeforeSummary: payload.talk_history_cutoff_before_summary,
+      autoSummarizeMode: payload.auto_summarize_mode,
+      autoSummarizeIntervalHours: String(payload.auto_summarize_interval_hours),
+      summarizeTurns: String(payload.summarize_turns),
       talkHistoryCutoffHours: String(payload.talk_history_cutoff_by_past_hours),
       removeAttachment: payload.remove_attachment,
       voicevoxSpeakerId: normalizeNumberForInput(payload.voicevox_speaker_id, { allowNegative: true, integer: true }),
@@ -1474,6 +1515,10 @@ function goBack() {
   const dynamicContextUrlInput = document.getElementById('dynamicContextUrl');
   const dynamicContextHistoryTurnsInput = document.getElementById('dynamicContextHistoryTurns');
   const talkHistoryCutoffHoursInput = document.getElementById('talkHistoryCutoffHours');
+  const talkHistoryCutoffBeforeSummaryInput = document.getElementById('talkHistoryCutoffBeforeSummary');
+  const autoSummarizeModeSelect = document.getElementById('autoSummarizeMode');
+  const autoSummarizeIntervalInput = document.getElementById('autoSummarizeIntervalHours');
+  const summarizeTurnsInput = document.getElementById('summarizeTurns');
   const removeAttachmentInput = document.getElementById('removeAttachment');
   const voicevoxSpeakerIdInput = document.getElementById('voicevoxSpeakerId');
   const voicevoxExtractModeInput = document.getElementById('voicevoxExtractMode');
@@ -1503,6 +1548,10 @@ function goBack() {
     (enableDynamicContextInput?.checked ?? false) !== originalSettings.enableDynamicContext ||
     (dynamicContextUrlInput?.value ?? '') !== originalSettings.dynamicContextUrl ||
     (dynamicContextHistoryTurnsInput?.value ?? '') !== originalSettings.dynamicContextHistoryTurns ||
+    (talkHistoryCutoffBeforeSummaryInput?.checked ?? false) !== originalSettings.talkHistoryCutoffBeforeSummary ||
+    (autoSummarizeModeSelect?.value ?? '') !== originalSettings.autoSummarizeMode ||
+    (autoSummarizeIntervalInput?.value ?? '') !== originalSettings.autoSummarizeIntervalHours ||
+    (summarizeTurnsInput?.value ?? '') !== originalSettings.summarizeTurns ||
     (talkHistoryCutoffHoursInput?.value ?? '') !== originalSettings.talkHistoryCutoffHours ||
     (removeAttachmentInput?.checked ?? false) !== originalSettings.removeAttachment ||
     (summaryPromptInput?.value ?? '') !== originalSettings.summaryPrompt ||

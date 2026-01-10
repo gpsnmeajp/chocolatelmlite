@@ -615,6 +615,8 @@ namespace CllDotnet
 
             if (newGuid != Guid.Empty)
             {
+                await AutoSummarizeIfNeeded(entry, cancellationToken);
+
                 // AI生成処理を開始する
                 consecutiveTimerGenerations = 0; // 連続タイマー生成回数をリセットする(ユーザー操作による生成なので)
                 lastGeneratedAt = DateTime.UtcNow; // 最後の生成時刻を更新する
@@ -747,6 +749,27 @@ namespace CllDotnet
                 personaSettings.TalkHistoryCutoffByPastHours = ParseIntOrDefault(talkHistoryCutoffElement, personaSettings.TalkHistoryCutoffByPastHours);
             }
 
+            if (content.TryGetValue("talk_history_cutoff_before_summary", out var talkHistoryCutoffBeforeSummaryElement) &&
+                (talkHistoryCutoffBeforeSummaryElement.ValueKind == JsonValueKind.True || talkHistoryCutoffBeforeSummaryElement.ValueKind == JsonValueKind.False))
+            {
+                personaSettings.TalkHistoryCutoffBeforeSummary = talkHistoryCutoffBeforeSummaryElement.GetBoolean();
+            }
+
+            if (content.TryGetValue("auto_summarize_mode", out var autoSummarizeModeElement) && autoSummarizeModeElement.ValueKind == JsonValueKind.String)
+            {
+                personaSettings.AutoSummarizeMode = autoSummarizeModeElement.GetString() ?? personaSettings.AutoSummarizeMode;
+            }
+
+            if (content.TryGetValue("auto_summarize_interval_hours", out var autoSummarizeIntervalElement))
+            {
+                personaSettings.AutoSummarizeIntervalHours = ParseIntOrDefault(autoSummarizeIntervalElement, personaSettings.AutoSummarizeIntervalHours);
+            }
+
+            if (content.TryGetValue("summarize_turns", out var summarizeTurnsElement))
+            {
+                personaSettings.SummarizeTurns = ParseIntOrDefault(summarizeTurnsElement, personaSettings.SummarizeTurns);
+            }
+
             if (content.ContainsKey("dynamic_context_history_turns") && content["dynamic_context_history_turns"].ValueKind == JsonValueKind.Number)
             {
                 personaSettings.DynamicContextHistoryTurns = content["dynamic_context_history_turns"].GetInt32();
@@ -811,7 +834,9 @@ namespace CllDotnet
                 var currentSummary = fileManager.GetActivePersonaSummary();
                 if (!string.Equals(summaryTextFromClient, currentSummary?.Text, StringComparison.Ordinal))
                 {
-                    var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    // クライアントから送信された要約テキストが現在のものと異なる場合、保存する
+                    // このとき、タイムスタンプは現在のものを維持する(更新しない)
+                    var now = currentSummary != null ? currentSummary.Timestamp : DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                     fileManager.SaveActivePersonaSummary(summaryTextFromClient, now);
                 }
             }
@@ -846,6 +871,10 @@ namespace CllDotnet
                 result["dynamic_context_url"] = settings.DynamicContextUrl;
                 result["dynamic_context_history_turns"] = settings.DynamicContextHistoryTurns;
                 result["talk_history_cutoff_by_past_hours"] = settings.TalkHistoryCutoffByPastHours;
+                result["talk_history_cutoff_before_summary"] = settings.TalkHistoryCutoffBeforeSummary;
+                result["auto_summarize_mode"] = settings.AutoSummarizeMode;
+                result["auto_summarize_interval_hours"] = settings.AutoSummarizeIntervalHours;
+                result["summarize_turns"] = settings.SummarizeTurns;
                 result["remove_attachment"] = settings.RemoveAttachment;
                 result["voicevox_speaker_id"] = settings.VoiceVoxSpeakerId;
                 result["voicevox_extract_mode"] = settings.VoiceVoxExtractMode;
@@ -953,6 +982,8 @@ namespace CllDotnet
             }
 
             var summaryPrompt = promptOverride ?? fileManager.GetSummaryPromptFromActivePersona();
+            var personaSettings = fileManager.GetActivePersonaSettings();
+            var summarizeTurns = personaSettings?.SummarizeTurns ?? 100;
             var talkEntries = fileManager.GetAllTalkHistoryAllFromActivePersonaCached();
             if (talkEntries.Count == 0)
             {
@@ -960,7 +991,7 @@ namespace CllDotnet
             }
 
             var summaryLlm = new SummaryLlm(fileManager);
-            var result = await summaryLlm.GenerateSummaryAsync(summaryPrompt, talkEntries, cancellationToken);
+            var result = await summaryLlm.GenerateSummaryAsync(summaryPrompt, talkEntries, summarizeTurns, cancellationToken);
             if (!result.Success || string.IsNullOrWhiteSpace(result.SummaryText))
             {
                 var message = string.IsNullOrWhiteSpace(result.Message) ? "要約の生成に失敗しました。" : result.Message;
@@ -977,6 +1008,67 @@ namespace CllDotnet
                 { "summary_timestamp", timestamp },
                 { "summary_prompt", summaryPrompt }
             };
+        }
+
+        // ユーザー発言を受けて、自動要約が必要か確認し、必要なら実行する
+        private async Task AutoSummarizeIfNeeded(TalkEntry lastEntry, CancellationToken cancellationToken)
+        {
+            var settings = fileManager.GetActivePersonaSettings();
+            if (settings == null)
+            {
+                return;
+            }
+
+            // 現在time_basedモードのみ対応
+            if (!string.Equals(settings.AutoSummarizeMode, "time_based", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            // 自動要約間隔が0以下なら無効
+            if (settings.AutoSummarizeIntervalHours <= 0)
+            {
+                return;
+            }
+
+            var summary = fileManager.GetActivePersonaSummary();
+            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var intervalSeconds = (long)settings.AutoSummarizeIntervalHours * 3600L;
+            // まだ自動要約間隔に達していないなら無効
+            if (summary != null && summary.Timestamp > 0 && now - summary.Timestamp < intervalSeconds)
+            {
+                return;
+            }
+
+            // 会話履歴が存在しないなら無効
+            var talkEntries = fileManager.GetAllTalkHistoryAllFromActivePersonaCached();
+            if (talkEntries.Count == 0)
+            {
+                return;
+            }
+
+            // 自動要約を実行する
+            var summarizeTurns = settings.SummarizeTurns <= 0 ? 100 : settings.SummarizeTurns;
+            var prompt = fileManager.GetSummaryPromptFromActivePersona();
+
+            try
+            {
+                var summaryLlm = new SummaryLlm(fileManager);
+                var result = await summaryLlm.GenerateSummaryAsync(prompt, talkEntries, summarizeTurns, cancellationToken);
+                if (result.Success && !string.IsNullOrWhiteSpace(result.SummaryText))
+                {
+                    fileManager.SaveActivePersonaSummary(result.SummaryText!, now);
+                    MyLog.LogWrite("自動要約を実行しました。");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                MyLog.LogWrite($"自動要約に失敗しました: {ex.Message}");
+            }
         }
 
         private TalkEntry ToTalkEntry(Dictionary<string, JsonElement> content, Guid existingUuid)

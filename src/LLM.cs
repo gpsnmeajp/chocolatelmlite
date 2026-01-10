@@ -184,7 +184,12 @@ namespace CllDotnet
                         var systemprompt = SystemPrompt.BuildSystemPrompt(fileManager);
                         MyLog.LogWrite($"システムプロンプト: {systemprompt.Length}文字");
 
-                        var talks = fileManager.GetTalkHistoryWithTimeCutoffFromActivePersona(activePersonaSettings.TalkHistoryCutoffByPastHours, out var archivedByTime);
+                        var summaryInfo = fileManager.GetActivePersonaSummary();
+                        var talks = fileManager.GetTalkHistoryWithTimeCutoffFromActivePersona(
+                            activePersonaSettings.TalkHistoryCutoffByPastHours,
+                            activePersonaSettings.TalkHistoryCutoffBeforeSummary,
+                            summaryInfo?.Timestamp ?? 0,
+                            out var archivedByTime);
                         if (archivedByTime > 0)
                         {
                             MyLog.LogWrite($"会話履歴の時間カットオフ: {archivedByTime}件を除外");

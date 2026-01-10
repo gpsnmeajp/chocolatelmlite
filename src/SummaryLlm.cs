@@ -19,7 +19,7 @@ namespace CllDotnet
             _fileManager = fileManager;
         }
 
-        public async Task<(bool Success, string Message, string? SummaryText)> GenerateSummaryAsync(string summaryPrompt, List<TalkEntry> talkEntries, CancellationToken cancellationToken)
+        public async Task<(bool Success, string Message, string? SummaryText)> GenerateSummaryAsync(string summaryPrompt, List<TalkEntry> talkEntries, int summarizeTurns, CancellationToken cancellationToken)
         {
             var settings = _fileManager.generalSettings;
 
@@ -51,7 +51,9 @@ namespace CllDotnet
                 return (false, ret, null);
             }
 
-            var historyText = BuildTalkHistoryText(talkEntries);
+            var limitedEntries = LimitTalkEntries(talkEntries, summarizeTurns);
+
+            var historyText = BuildTalkHistoryText(limitedEntries);
 
             var requestBody = new
             {
@@ -129,7 +131,7 @@ namespace CllDotnet
             return (false, "要約の生成に失敗しました。", null);
         }
 
-        // TODO: あとで修正
+        // TODO: あとで修正 (色々と問題がある。例えば過去の会話要約を反映する仕組みがない等)
         private string BuildTalkHistoryText(List<TalkEntry> entries)
         {
             var timeZone = _fileManager.GetTimeZoneInfo();
@@ -171,6 +173,16 @@ namespace CllDotnet
                 joined = "(一部のみ抜粋)\n" + joined;
             }
             return joined;
+        }
+
+        private static List<TalkEntry> LimitTalkEntries(List<TalkEntry> entries, int summarizeTurns)
+        {
+            if (summarizeTurns <= 0 || entries.Count <= summarizeTurns)
+            {
+                return entries;
+            }
+
+            return entries.Skip(Math.Max(0, entries.Count - summarizeTurns)).ToList();
         }
     }
 }

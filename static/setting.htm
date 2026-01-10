@@ -96,6 +96,33 @@
             <textarea id="summaryText" rows="8" placeholder="会話の要約がここに表示されます..."></textarea>
           </div>
 
+          <div class="info-message">
+            ⏱️ <strong>自動要約とカットオフ:</strong><br>
+            ・要約済みより前の履歴を自動で除外したい場合は「要約前をカットオフ」を有効にします。<br>
+            ・自動要約(time_based)は最終要約から指定時間経過後、次のユーザー投稿時に要約を実行します。<br>
+            ・要約に含める履歴ターン数は「要約ターン上限」で指定します。
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="talkHistoryCutoffBeforeSummary"> 要約前をカットオフ
+            </label>
+          </div>
+          <div class="form-group">
+            <label>自動要約モード</label>
+            <select id="autoSummarizeMode">
+              <option value="none">なし</option>
+              <option value="time_based">time_based (時間ベース)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>自動要約間隔 (時間)</label>
+            <input type="number" id="autoSummarizeIntervalHours" value="24" min="1" step="1" placeholder="24">
+          </div>
+          <div class="form-group">
+            <label>要約ターン上限</label>
+            <input type="number" id="summarizeTurns" value="100" min="1" step="1" placeholder="100">
+          </div>
+
 
           <div class="advanced-settings__content">
             <div class="info-message">

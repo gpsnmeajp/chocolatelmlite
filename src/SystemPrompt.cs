@@ -41,6 +41,17 @@ namespace CllDotnet
                 systemPrompt += $"\n\n<system>{additionalInfo}</system>";
             }
 
+            // 過去の会話の要約情報を追加
+            var summary = fileManager.GetActivePersonaSummary();
+            if (summary != null && !string.IsNullOrWhiteSpace(summary.Text))
+            {
+                var timeZone = fileManager.GetTimeZoneInfo();
+                var updatedAt = summary.Timestamp > 0
+                    ? TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeSeconds(summary.Timestamp), timeZone).ToString("yyyy-MM-dd HH:mm:ss")
+                    : "unknown";
+                systemPrompt += $"\n\n<summary updated_at='{updatedAt}'>\n{summary.Text}\n</summary>";
+            }
+
             return systemPrompt;
         }
 

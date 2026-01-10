@@ -28,6 +28,11 @@ namespace CllDotnet
         public int DynamicContextHistoryTurns { get; set; } = 8;
         public bool RemoveAttachment { get; set; } = false;
         public int TalkHistoryCutoffByPastHours { get; set; } = 0; // 0は無効
+        public bool TalkHistoryCutoffBeforeSummary { get; set; } = false;
+        public string AutoSummarizeMode { get; set; } = "none"; // none, time_based 自動要約モード
+        public int AutoSummarizeIntervalHours { get; set; } = 24; // タイムベース要約間隔
+        public int SummarizeTurns { get; set; } = 100; // ターン上限
+
         public int VoiceVoxSpeakerId = -1; // -1は未設定
         public double? VoiceVoxSpeedScale = null;
         public double? VoiceVoxPitchScale = null;
@@ -1373,16 +1378,27 @@ namespace CllDotnet
         }
 
         // 会話履歴に時間カットオフを適用する(0以下なら無効)
-        private List<TalkEntry> ApplyTalkHistoryTimeCutoff(List<TalkEntry> messages, int cutoffHours, out int archivedCount)
+        private List<TalkEntry> ApplyTalkHistoryTimeCutoff(List<TalkEntry> messages, int cutoffHours, bool cutoffBeforeSummary, long summaryTimestamp, out int archivedCount)
         {
             archivedCount = 0;
-            // 無効または負の値の場合はそのままコピーを返す
-            if (cutoffHours <= 0)
+            // cutoffTimestampを決定
+            long cutoffTimestamp = long.MinValue;
+            if (cutoffHours > 0)
+            {
+                cutoffTimestamp = DateTimeOffset.UtcNow.AddHours(-cutoffHours).ToUnixTimeSeconds();
+            }
+
+            if (cutoffBeforeSummary && summaryTimestamp > 0)
+            {
+                cutoffTimestamp = Math.Max(cutoffTimestamp, summaryTimestamp);
+            }
+
+            // 有効なカットオフ条件がない場合はそのままコピーを返す
+            if (cutoffTimestamp == long.MinValue)
             {
                 return messages.ToList();
             }
 
-            var cutoffTimestamp = DateTimeOffset.UtcNow.AddHours(-cutoffHours).ToUnixTimeSeconds();
             var filtered = messages
                 .Where(entry => entry.Timestamp == 0 || entry.Timestamp >= cutoffTimestamp)
                 .ToList();
@@ -1397,10 +1413,10 @@ namespace CllDotnet
         }
 
         // アクティブなペルソナの会話履歴に時間カットオフを適用したコピーを取得する
-        public List<TalkEntry> GetTalkHistoryWithTimeCutoffFromActivePersona(int cutoffHours, out int archivedCount)
+        public List<TalkEntry> GetTalkHistoryWithTimeCutoffFromActivePersona(int cutoffHours, bool cutoffBeforeSummary, long summaryTimestamp, out int archivedCount)
         {
             var cached = GetAllTalkHistoryAllFromActivePersonaCached();
-            return ApplyTalkHistoryTimeCutoff(cached, cutoffHours, out archivedCount);
+            return ApplyTalkHistoryTimeCutoff(cached, cutoffHours, cutoffBeforeSummary, summaryTimestamp, out archivedCount);
         }
 
         // アクティブなペルソナの会話履歴の最後の一行を取得する。存在しなければnullを返す。(キャッシュを使用)
@@ -1465,8 +1481,15 @@ namespace CllDotnet
         {
             // 会話履歴をすべて取得     
             var messages = activePersonaTalkEntriesCache;
-            var cutoffHours = GetActivePersonaSettings().TalkHistoryCutoffByPastHours;
-            var filteredMessages = ApplyTalkHistoryTimeCutoff(messages, cutoffHours, out var archivedByTime);
+            var personaSettings = GetActivePersonaSettings();
+            var cutoffHours = personaSettings.TalkHistoryCutoffByPastHours;
+            var summary = GetActivePersonaSummary();
+            var filteredMessages = ApplyTalkHistoryTimeCutoff(
+                messages,
+                cutoffHours,
+                personaSettings.TalkHistoryCutoffBeforeSummary,
+                summary?.Timestamp ?? 0,
+                out var archivedByTime);
             // システムプロンプトを取得
             var rawSystemPrompt = SystemPrompt.BuildRawSystemPrompt(this);
             var builtSystemPrompt = SystemPrompt.BuildSystemPrompt(this); //会話統計取得処理はスキップさせていた(過去のメモ)
