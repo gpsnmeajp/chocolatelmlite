@@ -293,7 +293,7 @@ const FIELD_DEFINITIONS = {
   },
   EnableSearchLlm: {
     label: '検索LLMを有効化',
-    description: '検索対応LLMモデルをツールとして呼び出してWeb検索を行います。直接検索エンジン系APIを使用するのに比べて、コンテキスト効率が良く、望ましい結果が得られます。',
+    description: '検索対応LLMモデルをツールとして呼び出してWeb検索を行います。直接検索エンジン系APIを使用するのに比べて、コンテキスト効率が良く、望ましい結果が得られます。利用には対応したエンドポイントとAPIキーが必要です。',
     valueType: 'boolean',
     order: 224
   },
