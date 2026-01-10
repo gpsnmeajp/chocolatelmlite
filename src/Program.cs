@@ -113,6 +113,7 @@ namespace CllDotnet
 
         private static void Canceler(object? sender, ConsoleCancelEventArgs e)
         {
+            exit = true;
             cancelHandler?.Invoke();
         }
 
