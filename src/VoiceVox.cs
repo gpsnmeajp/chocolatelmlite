@@ -141,8 +141,14 @@ namespace CllDotnet
             for(int i = 0; i < splitText.Length; i++)
             {
                 int tailIndex = startIndex + originalText.IndexOf(splitText[i]) + splitText[i].Length + 1;
+                bool lastFinished = finished && (i == splitText.Length - 1);
+
+                // Markdownの強調タグを除去
                 var trimmedSegment = splitText[i].Trim().Replace("**", "");
-                bool lastFinished = finished && (i == splitText.Length -1);
+                // Markdownのリンクタグを除去
+                trimmedSegment = Regex.Replace(trimmedSegment, @"\[(.*?)\]\((.*?)\)", "$1");
+                // HTMLタグを除去
+                trimmedSegment = Regex.Replace(trimmedSegment, "<.*?>", "");
 
                 if (!string.IsNullOrEmpty(trimmedSegment))
                 {
